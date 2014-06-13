@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import time
 import json
@@ -11,6 +12,14 @@ import zmq
 
 
 MAX_STRDUMP=100
+HAS_UTF8 = re.compile(r'[\x80-\xff]')
+
+def has_utf8(s): return HAS_UTF8.search(s) is not None
+
+def ByteToHex( byteStr ):
+	""" Convert a byte string to it's hex string representation e.g. for output.  """
+	return ''.join( [ "%02X" % ord( x ) for x in byteStr ] ).strip()
+
 
 class RCP3Client(object):
 	def __init__(self):
@@ -49,12 +58,21 @@ class Dumper(object):
 		self.seen = set()
 		return res
 
+	def handle_binary(self, obj):
+		if isinstance(obj, str) and has_utf8(obj):
+			return '>>' + ByteToHex(obj) + '<<'
+		return obj
+
 	def convert_obj(self, obj, depth=4):
-		if id(obj) in self.seen: return u'<object "{}" already seen before>'.format(unicode(obj)[:MAX_STRDUMP])
+		if id(obj) in self.seen:
+			return u'<object "{}" already seen before>'.format(unicode(
+				self.handle_binary(obj))[:MAX_STRDUMP])
+
 		self.seen.add(id(obj))
 
 		prim = (int, long, float, str, unicode)
 		composite = (list, dict, tuple, set)
+		obj = self.handle_binary(obj)
 		if isinstance(obj, prim): return obj
 
 		if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
