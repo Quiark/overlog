@@ -42,6 +42,14 @@ Build.prototype.td = function(kls) {
 	return this.elem('td', kls);
 }
 
+Build.prototype.ul = function(kls) {
+	return this.elem('ul', kls);
+}
+
+Build.prototype.li = function(kls) {
+	return this.elem('li', kls);
+}
+
 Build.prototype.dumpobj = function(indent, obj, $_parent) {
 	var old_parent = this.$_parent;
 
@@ -91,6 +99,34 @@ function rnd_choose(choices) {
   return choices[index];
 }
 
+function Stack(items, builder, $parent) {
+	this.items = items;
+	this.builder = builder;
+
+	var self = this;
+
+	var b = new Build();
+	b.push_parent($parent);
+
+	this.$container = b.div('container');
+	this.$choices = b.div('choices'); 
+
+	b.push_parent(this.$choices);
+	for (var key in items) {
+		var $elem = b.span('button').text(key).attr('data-sel', key);
+		$elem.click(function(evt) {
+			self.do_switch($(this).attr('data-sel'));
+		});
+	}
+};
+
+Stack.prototype.do_switch = function(key) {
+	var item = this.items[key];
+	this.$container.empty();
+
+	this.builder( item, this.$container );
+}
+
 OverlogBoard = {
 	init: function($elem) {
 		this.$main = $elem;
@@ -117,8 +153,13 @@ OverlogBoard = {
 	add_message: function(msg) {
 		this.all_data.push(msg);
 
+		this.build_message(msg, this.$main);
+
+	},
+
+	build_message: function(msg, $parent) {
 		var b = new Build();
-		var $msg = b.div('msg').appendTo(this.$main);
+		var $msg = b.div('msg').appendTo($parent);
 		$msg.data(msg);
 		$msg.attr('data-pid', msg.pid);
 		$msg.draggable({ containment: "parent", handle: ".header" });
@@ -129,13 +170,22 @@ OverlogBoard = {
 		b.span('pid').text(msg.pid);
 		var $tog_stack = b.span('stack_toggle').addClass('button').text('+ stack');
 		b.span('size_toggle').addClass('button').text('+ enlarge');
+		b.span().addClass('button').text('( pid').click(function(evt) { OverlogBoard.group_by_preset('pid'); });
+		b.span().addClass('button').text('( caller').click(function(evt) { OverlogBoard.group_by_preset('caller'); });
 		b.pop_parent();
 
 		b.dumpstack(msg.stack, b.div('stack').css('display', 'none'));
 		b.set_parent($msg);
 		b.dumpobj(0, msg.data, b.div('data'));
 
+		try {
+			b.set_parent($msg);
+			b.dumpobj(0, msg.caller, b.div('caller'));
+			$msg.attr('data-caller', msg.caller.hash);
+		} catch (e) { };
+
 	},
+
 	test: function() {
 		var obj = {k: 'hello', l: 'world'};
 		var pids = [111, 222, 333];
@@ -145,15 +195,38 @@ OverlogBoard = {
 			this.add_message(obj);
 		}
 
-		this.group_by();
+		//this.group_by();
 	},
 
-	group_by: function() {
+	group_by_preset: function(preset) {
+		if (preset == 'pid') {
+			this.group_by(
+					function(val) {
+						return val.pid;
+					}, 
+					'data-pid',
+					function(val, $header) {
+						$header.text('pid:' + val.pid);
+					});
+		} else if (preset == 'caller') {
+			this.group_by(
+					function(val) {
+						return val.caller.hash;
+					},
+					'data-caller',
+					function(val, $header) {
+						$header.text('caller:' + val.caller.name + ':' + val.caller.lineno);
+					});
+		}
+	},
+
+	group_by: function(keyfn, elm_attr, head_fn) {
 		var groups = {};
+		var representatives = {};
 
 		for (var i in this.all_data) {
 			var val = this.all_data[i];
-			var keyval = val['pid'];
+			var keyval = keyfn(val);
 
 			var grp = null;
 			if (keyval in groups) {
@@ -161,6 +234,9 @@ OverlogBoard = {
 			} else {
 				grp = [];
 				groups[keyval] = grp;
+
+				// also store one representative
+				representatives[keyval] = val;
 			}
 
 			grp.push( val );
@@ -169,7 +245,8 @@ OverlogBoard = {
 		this.groups = groups;
 
 		// now build DOM
-		var $msg = $('div.msg', this.$main);
+		//var $msg = $('div.msg', this.$main);
+		this.$main.empty();
 
 		var b = new Build();
 		b.push_parent(this.$main);
@@ -178,16 +255,19 @@ OverlogBoard = {
 
 			var $group = b.div('group');
 			b.push_parent( $group );
-				b.span('header').text(k);
+				head_fn( representatives[k], b.span('header') );
 
+				var switcher = new Stack(obj, this.build_message, $group);
+				/*
 				$msg.each(function(ix, elm) {
 					var $elm = $(elm);
-					if ($elm.attr('data-pid') == k) {
+					if ($elm.attr(elm_attr) == k) {
 						$elm.appendTo($group);
 						$elm.addClass('smallmsg');
 					}
 
 				});
+				*/
 
 			b.pop_parent();
 		}

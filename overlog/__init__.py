@@ -22,10 +22,6 @@ class RCP3Client(object):
 		self._socket.connect(address)
 
 	def SendMessage(self, value, streamName=None, commands=None):
-		form = {
-			'__type': 3
-		}
-
 		if self._socket == None:
 			raise Exception("Attempt to send message without connection.")
 
@@ -39,6 +35,7 @@ class RCP3Client(object):
 		message = "%s%c%s%c%s"%(streamName, chr(0), json.dumps(additionalInfo), chr(0), json_val)
 
 		#print 'sending', message
+		print 'msg {} being sent in overlog.client'.format(additionalInfo['TimeStamp'])
 		self._socket.send(message)
 
 
@@ -106,10 +103,11 @@ class Logger(object):
 		self.rc = RCP3Client()
 		self.rc.Connect("tcp://localhost:55557")
 
+
 	def data(self, *args, **kwargs):
 		data = self.pack_args(*args, **kwargs)
-		data['caller'] = Dumper().dump_stackframe( traceback.extract_stack(limit=3)[1] )
-		self.send_data(data)
+		caller = Dumper().dump_stackframe( traceback.extract_stack(limit=3)[1] )
+		self.send_data(data, caller=caller)
 
 	def pack_args(self, *args, **kwargs):
 		data = {}
@@ -130,9 +128,19 @@ class Logger(object):
 				'data': Dumper().dump(data)}
 			msg.update(kwargs)
 
+			# add hash for caller
+			self.hash_caller(msg)
+
 			self.handle_msg(msg)
 		except Exception as e:
 			logging.exception('in overlog, ignoring')
+
+	def hash_caller(self, msg):
+		if not 'caller' in msg: return
+
+		msg['caller']['hash'] = hash((msg['caller']['name'],
+									msg['caller']['filename'],
+									msg['caller']['lineno']))
 
 	def filter_stack(self, stack):
 		def pred(fname, lineno, function, codeline):
@@ -148,8 +156,8 @@ class Logger(object):
 		# TODO: should define some metadata about messages
 		def _internal(_self, *args, **kwargs):
 			data = self.pack_args(*args, **kwargs)
-			data['caller'] = Dumper().dump_function(fn)
-			self.send_data(data, func_name=fn.func_name)
+			caller = Dumper().dump_function(fn)
+			self.send_data(data, func_name=fn.func_name, caller=caller)
 			return fn(_self, *args, **kwargs)
 
 		return _internal
@@ -160,7 +168,8 @@ class Logger(object):
 		return cls
 
 	def loc(self, loc):
-		self.send_data(loc)
+		caller = Dumper().dump_stackframe( traceback.extract_stack(limit=3)[1] )
+		self.send_data(loc, caller=caller)
 
 OLOG = Logger()
 
@@ -187,3 +196,7 @@ if __name__ == '__main__':
 	x = SomeClass()
 	x.method(4)
 	x.test()
+
+	while True:
+		z =raw_input('>')
+		OLOG.data(z)

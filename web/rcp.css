@@ -1,0 +1,149 @@
+pre {font-family: Consolas,monospace}
+pre.messageText {display:inline-block; margin:0px;}
+pre.messageInfo {outline: 1px solid #ccc; padding: 5px; margin: 5px; display:none;margin-bottom: 15px;}
+.string { color: green; }
+.number { color: darkorange; }
+.boolean { color: blue; }
+.null { color: magenta; }
+.key { color: red; }
+
+.consoleButtonsPanel {
+    position:fixed;
+    top:40px;
+    right:30px;
+    align:right;
+}
+
+.consoleButtons {
+    min-height:40px;
+    width:100%;
+}
+
+.ui-layout-south{
+	color:white;
+	padding: 5px; 
+	background: rgb(150,0,0);
+	font-weight: bold;
+}
+
+#jstree {
+	position: absolute;
+	left: -8px;
+}
+table.HttSubtable {
+	display:none;
+}
+div.timing-block-opener {
+	height:5px; 
+	width:100%; 
+	background-color:rgb(142, 205, 255); 
+}
+
+/* Overlog */
+div.msg {
+	background-color: #cfd;
+	border: 1px solid gray;
+	font-family: "Segoe UI", sans-serif;
+}
+
+
+ul.stack {
+	display: none;
+}
+
+ul.stack > li > span {
+	margin-left: 1ex;
+	margin-right: 1ex;
+}
+
+ul.stack > li .function {
+	display: none;
+}
+
+ul.stack > li > .lineno {
+	background-color: #ccf;
+}
+
+ul.stack > li > .codeline {
+	background-color: #fed;
+	margin: 0px;
+}
+
+div.msg {
+	margin: 1ex;
+}
+
+div.msg > .header {
+	background-color: #ddd;
+}
+
+div.msg .name {
+	background-color: #fca;
+	color: #444;
+	font-weight: bold;
+}
+
+div.msg td.value {
+	max-width: 100em;
+}
+
+div.msg tr.line td {
+	border-bottom: 1px solid #ccc;
+}
+
+div.msg .data {
+	border: 1px solid #aaa;
+}
+
+div.msg div.stack span.filename {
+	font-family: monospace;
+}
+div.msg div.stack span.lineno {
+    margin-left: 1ex;
+}
+
+div.msg div.stack span.function {
+    font-family: monospace;
+    margin-left: 10ex;
+    color: gray;
+}
+
+div.msg div.stack span.line {
+    font-family: monospace;
+    background-color: #ffc;
+    display: block;
+}
+
+div.msg div.header {
+	background-color: #333;
+	font-weight: bold;
+	color: #fcf;
+}
+
+div.msg div.header * {
+	margin-left: 2ex;
+
+}
+
+.button {
+	background-color: #33f;
+	color: #ccf;
+	padding: 4px;
+	font-weight: bold;
+	border-right: 2px solid #004;
+	border-bottom: 2px solid #004;
+	border-radius: 2px;
+
+	cursor: default;
+}
+
+div.msg.smallmsg {
+	overflow: scroll;
+	max-width: 600px;
+	max-height: 500px;
+}
+
+div.group {
+	border: 1px solid #ccf;
+	margin: 2ex;
+}
