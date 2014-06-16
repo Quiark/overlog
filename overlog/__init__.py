@@ -63,10 +63,17 @@ class Dumper(object):
 			return '>>' + ByteToHex(obj) + '<<'
 		return obj
 
-	def convert_obj(self, obj, depth=4):
-		if id(obj) in self.seen:
+	def print_seen(self, obj):
+		try:
 			return u'<object "{}" already seen before>'.format(unicode(
 				self.handle_binary(obj))[:MAX_STRDUMP])
+		except:
+			return u'<object repr:"{}" already seen before>'.format(repr(obj)[:MAX_STRDUMP])
+
+	def convert_obj(self, obj, depth=4):
+		if depth == 0: return ''
+		if id(obj) in self.seen:
+			return self.print_seen(obj)
 
 		self.seen.add(id(obj))
 
@@ -95,7 +102,12 @@ class Dumper(object):
 		else: return unicode(x)
 
 	def std_dump(self, obj):
-		return {k: getattr(obj, k)     for k in dir(obj)}
+		result = {}
+		for k in dir(obj):
+			try:
+				result[k] = getattr(obj, k)
+			except: pass
+		return result
 
 	def attr_filter(self, k, v):
 		if inspect.ismodule(v) or inspect.ismethod(v) or inspect.isfunction(v): return False
@@ -169,6 +181,22 @@ class Logger(object):
 	def handle_msg(self, msg):
 		self.rc.SendMessage(msg, 'OverLog#')
 
+	def trace_fmt(self):
+		sys.setprofile(self.tracer)
+
+	def tracer(self, frame, event, arg):
+		if event != 'c_call' or arg.__name__ != 'format' or not isinstance(arg.__self__, (str, unicode)): return
+		if frame.f_code.co_filename == __file__: return
+		#print frame.f_locals
+		data = frame.f_locals
+		caller = {'name': frame.f_code.co_name,
+					'filename': frame.f_code.co_filename,
+					'lineno': frame.f_lineno}
+		self.send_data(data, caller=caller)
+
+
+
+
 	# decorator
 	def method(self, fn):
 		# TODO: should define some metadata about messages
@@ -189,32 +217,4 @@ class Logger(object):
 		caller = Dumper().dump_stackframe( traceback.extract_stack(limit=3)[1] )
 		self.send_data(loc, caller=caller)
 
-OLOG = Logger()
 
-class SomeClass(object):
-	def __init__(self):
-		self.a = 1
-		self.b = 'cc'
-		self.sel = self
-
-	def x__dump__(self):
-		return [self.a, self.b]
-
-	@OLOG.method
-	def method(self, x):
-		print 3 + x
-
-
-	def test(self):
-		OLOG.data('hello')
-
-TESTDATA = [1, 'abc', u'bcd', SomeClass()]
-
-if __name__ == '__main__':
-	x = SomeClass()
-	x.method(4)
-	x.test()
-
-	while True:
-		z =raw_input('>')
-		OLOG.data(z)

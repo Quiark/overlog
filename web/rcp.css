@@ -21,7 +21,7 @@ pre.messageInfo {outline: 1px solid #ccc; padding: 5px; margin: 5px; display:non
 
 .ui-layout-south{
 	color:white;
-	padding: 5px; 
+	padding: 5px;
 	background: rgb(150,0,0);
 	font-weight: bold;
 }
@@ -34,9 +34,9 @@ table.HttSubtable {
 	display:none;
 }
 div.timing-block-opener {
-	height:5px; 
-	width:100%; 
-	background-color:rgb(142, 205, 255); 
+	height:5px;
+	width:100%;
+	background-color:rgb(142, 205, 255);
 }
 
 /* Overlog */
@@ -91,6 +91,12 @@ div.msg tr.line td {
 	border-bottom: 1px solid #ccc;
 }
 
+div.msg td.collapse {
+	background-color: #4c4;
+	color: white;
+	width: 20px;
+}
+
 div.msg .data {
 	border: 1px solid #aaa;
 }
@@ -136,6 +142,7 @@ div.msg div.header * {
 
 	cursor: default;
 }
+
 
 div.msg.smallmsg {
 	overflow: scroll;
