@@ -70,10 +70,12 @@ div.msg > .header {
 	background-color: #ddd;
 }
 
-div.msg .name {
+div.msg span.name {
 	background-color: #fca;
 	color: #444;
 	font-weight: bold;
+	display: inline-block;
+	padding: 2px;
 }
 
 div.msg td.value {
@@ -132,9 +134,17 @@ div.msg div.header * {
 	border-right: 2px solid #004;
 	border-bottom: 2px solid #004;
 	border-radius: 2px;
-	display: inline-block;
 
 	cursor: default;
+	display: inline-block;
+}
+
+.button:hover {
+	background-color: #88f;
+}
+
+.button.disabled {
+	background-color: gray;
 }
 
 

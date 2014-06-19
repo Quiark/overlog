@@ -95,34 +95,43 @@ Build.prototype.li = function(kls) {
 Build.prototype.dumpobj = function(indent, obj, $_parent) {
 	this.push_parent($_parent);
 
+	var self = this;
+
 	for (var key in obj) {
 		var val = obj[key];
 
-		var $line = this.tr('line');
+		var $line = this.div('line');
 		this.push_parent($line);
 
-		var $collapse = this.td('button').addClass('collapse').text('+');
-		var $name = this.td('name').text(key).css('padding-left', indent * 20 + 'px');
+		var $collapse = this.span('button').addClass('collapse').text('+');
+		var $name = this.span('name').text(key).css('padding-left', indent * 20 + 'px');
 
 		if (typeof(val) != 'object') {
-			var $val = this.td('value').text(val);
-			$collapse.remove();
+			var $val = this.span('value').text(val);
+			$collapse.text(' ').addClass('disabled');
 			this.pop_parent();
 
 		} else {
 			// just a simple text
-			var $val = this.td('value').text('[...]');
+			var $val = this.span('value').text('[...]');
 			this.pop_parent();
 
 			// nested value is next div
 			var $sub = this.div('nested');
+			$sub.data('val', val);
+			$sub.data('val-expanded', false);
 			this.push_parent($sub);
-
-			this.dumpobj(indent + 1, val, $sub);
 
 			$collapse.data('$sub', $sub);
 			$collapse.click(function(evt) {
-				$(this).data('$sub').slideToggle(100);
+				var $sub = $(this).data('$sub');
+				var val = $sub.data('val');
+
+				if (!$sub.data('val-expanded')) {
+					self.dumpobj(indent + 1, val, $sub);
+					$sub.data('val-expanded', true);
+				}
+				$sub.slideToggle(100);
 			});
 
 			$sub.toggle(); // invisible by default
@@ -330,7 +339,7 @@ OverlogBoard = {
 		// now DOM building stuff
 		// find existing group elemnt
 		$group = $('.group', this.$main).filter(function(ix, elm) {
-			return $(elm).data('group-key', keyval);
+			return $(elm).data('group-key') == keyval;
 		});
 
 		var b = new Build();
@@ -338,6 +347,7 @@ OverlogBoard = {
 			// create
 			b.push_parent(this.$main);
 			$group = b.div('group');
+			$group.data('group-key', keyval);
 			b.push_parent($group);
 
 				recipe.headfn( this.representatives[keyval], b.span('header') );
