@@ -1,3 +1,44 @@
+SocketClient = {
+	server_name: 'ws://localhost:8111/WebSockets/',
+	reconnectingTimer : undefined,
+	paused : false,
+
+	Connect : function(){
+		var ws = new WebSocket(this.server_name);
+		ws.onmessage = this.on_message;
+		ws.onclose = function() { 
+			$("#bottom-information-panel").html("Disconnected. Waiting 1 second before reconnecting...");
+			// TODO
+			//this.reconnectingTimer = window.setInterval("javascript:SocketClient.Reconnect()",1000);
+		};
+		ws.onopen = function(){ 
+			$("#bottom-information-panel").html("Connected.");
+		};
+	},
+
+	Reconnect : function(){
+		$("#bottom-information-panel").html("Disconnected. Reconnecting...");
+		this.Connect();
+		window.clearInterval(this.reconnectingTimer)
+	},
+
+	FreezeConsole:function(){
+		$("#FreezeButton").html(this.paused?"Pause":"Run");
+		this.paused = !this.paused;
+	},
+
+	on_message: function(evt) {
+		if (this.paused) return;
+
+		var message = JSON.parse(evt.data);
+		OverlogBoard.add_message(message);
+
+	}
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
 function Build() {
 	this.$_parent = null;
 	this.parent_stack = [];
@@ -112,6 +153,8 @@ Build.prototype.dumpstack = function(stack, $_parent) {
 	this.pop_parent();
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////
 function rnd_choose(choices) {
   var index = Math.floor(Math.random() * choices.length);
   return choices[index];
@@ -156,6 +199,7 @@ Stack.prototype.do_switch = function(key) {
 	this.builder( item, this.$container );
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
 OverlogBoard = {
 	init: function($elem) {
 		this.$main = $elem;
@@ -371,3 +415,10 @@ OverlogBoard = {
 
 
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+$(document).ready(function() {
+	OverlogBoard.init($('#messages'));
+	SocketClient.Connect();
+});

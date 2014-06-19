@@ -7,16 +7,9 @@ pre.messageInfo {outline: 1px solid #ccc; padding: 5px; margin: 5px; display:non
 .null { color: magenta; }
 .key { color: red; }
 
-.consoleButtonsPanel {
-    position:fixed;
-    top:40px;
-    right:30px;
-    align:right;
-}
 
 .consoleButtons {
-    min-height:40px;
-    width:100%;
+    min-height:30px;
 }
 
 .ui-layout-south{
@@ -139,6 +132,7 @@ div.msg div.header * {
 	border-right: 2px solid #004;
 	border-bottom: 2px solid #004;
 	border-radius: 2px;
+	display: inline-block;
 
 	cursor: default;
 }

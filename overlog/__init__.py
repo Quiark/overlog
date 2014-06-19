@@ -34,18 +34,9 @@ class RCP3Client(object):
 		if self._socket == None:
 			raise Exception("Attempt to send message without connection.")
 
-		additionalInfo = dict()
-		additionalInfo["TimeStamp"] = int(time.time()*1000)
-		additionalInfo["ProcessingSequence"] = "_Overlog"
-		additionalInfo["DataType"] = "JSON"
-		if commands!=None: additionalInfo["Commands"] = commands
-
 		json_val = json.dumps(value)
-		message = "%s%c%s%c%s"%(streamName, chr(0), json.dumps(additionalInfo), chr(0), json_val)
-
-		#print 'sending', message
-		print 'msg {} being sent in overlog.client'.format(additionalInfo['TimeStamp'])
-		self._socket.send(message)
+		print 'msg {} being sent in overlog.client'.format(time.time())
+		self._socket.send(json_val)
 
 
 class Dumper(object):
@@ -131,7 +122,7 @@ class Dumper(object):
 class Logger(object):
 	def __init__(self):
 		self.rc = RCP3Client()
-		self.rc.Connect("tcp://localhost:55557")
+		self.rc.Connect("tcp://localhost:5111")
 
 
 	def data(self, *args, **kwargs):

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+
+	<link rel="stylesheet" href="board.css" />
+
+	<script src="vendor/jquery/jquery-2.0.3.min.js"></script>
+	<script src="vendor/jquery/jquery-ui-1.10.4.custom.min.js"></script>
+	<script src="board.js"></script>
+</head>
+<body>
+	<div class="control_panel">
+		<button id="RestartConsole" class="consoleButtons">New console</button>
+		<button id="ClearButton" class="consoleButtons" onclick="javascript:SocketClient.ClearConsole()">Clear</button>
+		<button id="FreezeButton" class="consoleButtons" onclick="javascript:SocketClient.FreezeConsole()">Pause</button>
+		<button id="test-button" class="consoleButtons">test</button>
+	</div>
+	<div id="messages" style="font-family: Consolas,monospace;"></div>
+	<div class="ui-layout-south" id="bottom-information-panel">  
+		Connecting...
+	</div>
+</body>
+</html>
