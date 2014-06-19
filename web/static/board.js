@@ -1,5 +1,6 @@
 SocketClient = {
-	server_name: 'ws://localhost:8111/WebSockets/',
+	//server_name: 'ws://localhost:8111/WebSockets/',
+	server_name: 'ws:/'+ location.host +'/WebSockets/',
 	reconnectingTimer : undefined,
 	paused : false,
 

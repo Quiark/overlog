@@ -18,7 +18,6 @@ ioloop.install()
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
 	def initialize(self, passer):
-		print 'initi', hex(id(passer))
 		self.passer = passer
 		self.passer.set_websocket(self)
 
@@ -47,8 +46,6 @@ class MessagePasser(object):
 			logging.error('No WebSocket connected')
 			return
 
-		print 'jakoze self', hex(id(self))
-		print msgs
 		for i in msgs:
 			#jsonMessage = json.loads(i)
 			self.wsock.write_message(i)
