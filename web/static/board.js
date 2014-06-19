@@ -246,12 +246,11 @@ OverlogBoard = {
 
 	},
 
-	add_message: function(msg) {
-		/*
-		this.all_data.push(msg);
+	clear: function() {
+		this.$main.empty();
+	},
 
-		this.build_message(msg, this.$main);
-		*/
+	add_message: function(msg) {
 		this.add_by_group(msg);
 
 	},
@@ -296,7 +295,6 @@ OverlogBoard = {
 			this.add_by_group(obj);
 		}
 
-		//this.group_by();
 	},
 
 	group_by_preset: function(preset) {
@@ -305,64 +303,6 @@ OverlogBoard = {
 		}
 	},
 
-	group_by: function(keyfn, elm_attr, head_fn) {
-		/*
-		var groups = {};
-		var representatives = {};
-
-		for (var i in this.all_data) {
-			var val = this.all_data[i];
-			var keyval = keyfn(val);
-
-			var grp = null;
-			if (keyval in groups) {
-				grp = groups[keyval];
-			} else {
-				grp = [];
-				groups[keyval] = grp;
-
-				// also store one representative
-				representatives[keyval] = val;
-			}
-
-			grp.push( val );
-		}
-
-		this.groups = groups;
-		*/
-
-		$.each(this.all_data, function(ix, elm) {
-			this.add_by_group(elm);
-		});
-
-		// now build DOM
-		//var $msg = $('div.msg', this.$main);
-		this.$main.empty();
-
-		var b = new Build();
-		b.push_parent(this.$main);
-		for (var k in groups) {
-			var obj = groups[k];
-
-			var $group = b.div('group');
-			b.push_parent( $group );
-				head_fn( representatives[k], b.span('header') );
-
-				var switcher = new Stack(obj, this.build_message, $group);
-				/*
-				$msg.each(function(ix, elm) {
-					var $elm = $(elm);
-					if ($elm.attr(elm_attr) == k) {
-						$elm.appendTo($group);
-						$elm.addClass('smallmsg');
-					}
-
-				});
-				*/
-
-			b.pop_parent();
-		}
-	},
 
 	add_by_group: function(msg) {
 		var recipe = this.group_recipes[this.state.grouping];

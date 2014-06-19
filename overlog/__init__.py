@@ -7,6 +7,7 @@ import pprint
 import inspect
 import logging
 import traceback
+import threading
 
 import zmq
 
@@ -123,12 +124,13 @@ class Logger(object):
 	def __init__(self):
 		self.rc = RCP3Client()
 		self.rc.Connect("tcp://localhost:5111")
+		# use when it's not necessary to re-create Dumper
+		self.dmp = Dumper()
 
 
 	def data(self, *args, **kwargs):
 		data = self.pack_args(*args, **kwargs)
-		caller = Dumper().dump_stackframe( traceback.extract_stack(limit=3)[1] )
-		self.send_data(data, caller=caller)
+		self.send_data(data)
 
 	def pack_args(self, *args, **kwargs):
 		data = {}
@@ -143,11 +145,20 @@ class Logger(object):
 
 	def send_data(self, data, **kwargs):
 		try:
+			thr = threading.current_thread()
 			msg = {'time': time.time(),
 				'pid': os.getpid(),
 				'stack': self.filter_stack( traceback.extract_stack() ),
-				'data': Dumper().dump(data)}
+				'data': Dumper().dump(data),
+				'thread': {
+					'id': thr.ident,
+					'name': thr.name
+				}
+			}
 			msg.update(kwargs)
+
+			if not ('caller' in kwargs):
+				msg['caller'] = self.dmp.dump_stackframe(msg['stack'][-1])
 
 			# add hash for caller
 			self.hash_caller(msg)
@@ -164,10 +175,15 @@ class Logger(object):
 									msg['caller']['lineno']))
 
 	def filter_stack(self, stack):
-		def pred(fname, lineno, function, codeline):
-			return ((codeline.find('extract_stack()') != -1) and (fname.find('overlog') != -1))
-		if pred(*stack[-1]): return stack[:-1]
-		return stack
+		def is_overlog(fname, lineno, function, codeline):
+			res = ((fname.replace('\\', '/').find('overlog/__init__.py') != -1))
+			return res
+
+		cutoff = 1
+		while cutoff < len(stack):
+			if not is_overlog(*stack[-cutoff]): break
+			cutoff += 1
+		return stack[:-(cutoff-1)] if cutoff != 0 else stack
 
 	def handle_msg(self, msg):
 		self.rc.SendMessage(msg, 'OverLog#')
@@ -190,7 +206,6 @@ class Logger(object):
 
 	# decorator
 	def method(self, fn):
-		# TODO: should define some metadata about messages
 		def _internal(_self, *args, **kwargs):
 			data = self.pack_args(*args, **kwargs)
 			caller = Dumper().dump_function(fn)
@@ -205,7 +220,6 @@ class Logger(object):
 		return cls
 
 	def loc(self, loc):
-		caller = Dumper().dump_stackframe( traceback.extract_stack(limit=3)[1] )
-		self.send_data(loc, caller=caller)
+		self.send_data(loc)
 
 

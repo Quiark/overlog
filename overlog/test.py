@@ -21,6 +21,8 @@ class SomeClass(object):
 	def method(self, x):
 		print 3 + x
 
+	def call_something(self):
+		return self.test_abc()
 
 	def test_abc(self):
 		OLOG.data('hello', {
@@ -43,3 +45,4 @@ if __name__ == '__main__':
 	while True:
 		z = raw_input('>')
 		OLOG.data(z, SomeClass())
+		x.call_something()
