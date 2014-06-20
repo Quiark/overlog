@@ -63,7 +63,7 @@ class Dumper(object):
 			return u'<object repr:"{}" already seen before>'.format(repr(obj)[:MAX_STRDUMP])
 
 	def convert_obj(self, obj, depth=4):
-		if depth == 0: return ''
+		if depth == 0: return '<too deep>'
 		if id(obj) in self.seen:
 			return self.print_seen(obj)
 
@@ -220,6 +220,13 @@ class Logger(object):
 		return cls
 
 	def loc(self, loc):
-		self.send_data(loc)
+		# let's make it go all the way up the stack trace and collect locals
+		st = inspect.stack() # may also use inspect.trace()
+		data = []
+		for fr in st:
+			data.append( fr.fr_locals() )
+
+		self.data(data)
+
 
 

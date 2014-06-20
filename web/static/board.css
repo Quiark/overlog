@@ -1,3 +1,7 @@
+body {
+	font-family: sans-serif;
+}
+
 pre {font-family: Consolas,monospace}
 pre.messageText {display:inline-block; margin:0px;}
 pre.messageInfo {outline: 1px solid #ccc; padding: 5px; margin: 5px; display:none;margin-bottom: 15px;}
@@ -131,8 +135,9 @@ div.msg div.header * {
 	color: #ccf;
 	padding: 4px;
 	font-weight: bold;
-	border-right: 2px solid #004;
-	border-bottom: 2px solid #004;
+	margin-top: 0px;
+	border-right: 2px solid #226;
+	border-bottom: 3px solid #226;
 	border-radius: 2px;
 
 	cursor: default;
@@ -141,10 +146,21 @@ div.msg div.header * {
 
 .button:hover {
 	background-color: #88f;
+	color: #448;
+}
+
+.button:active {
+	margin-top: 2px;
+	border-bottom: 1px solid #226;
 }
 
 .button.disabled {
 	background-color: gray;
+}
+
+.button.down {
+	background-color: #44f;
+	border: none;
 }
 
 

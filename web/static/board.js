@@ -208,6 +208,31 @@ Stack.prototype.do_switch = function(key) {
 
 	this.builder( item, this.$container );
 }
+///////////////////////////////////////////////////////////////////////////////////////////
+ControlPanel = function($parent, overlog) {
+	this.$parent = $parent;
+	this.overlog = overlog;
+	var self = this;
+
+	this.b = new Build();
+	this.b.push_parent(this.$parent);
+	this.b.push_parent(this.b.div('grouping'));
+
+	$.each(this.overlog.group_recipes, function(ix, elm) {
+		self.b.div('button').text(ix).click(function(evt) {
+			$(this).toggleClass('down');
+
+			self.refresh();
+		});
+	});
+};
+
+ControlPanel.prototype.refresh = function() {
+	var choices = $('.button.down').map(function(ix, elm) {return $(elm).text(); });
+	console.log(choices);
+};
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 OverlogBoard = {
@@ -216,17 +241,22 @@ OverlogBoard = {
 		this.all_data = [];
 
 		this.group_recipes = {
-			'pid': {
+			pid: {
 				keyfn: function(val) { return val.pid; },
 				elm_attr: 'data-pid',
 				headfn: function(val, $header) { $header.text('pid:' + val.pid); }
 			},
-			'caller': {
+			caller: {
 				keyfn: function(val) { return val.caller.hash; },
 				elm_attr: 'data-caller',
 				headfn: function(val, $header) {
 						$header.text('caller:' + val.caller.name + ':' + val.caller.lineno);
 				}
+			},
+			thread: {
+				keyfn: function(val) { return val.thread.id; },
+				elm_attr: 'data-thread',
+				headfn: function(val, $header) { $header.text('thread: ' + val.thread.name); }
 			}
 		};
 
@@ -245,6 +275,8 @@ OverlogBoard = {
 		this.active_msg_btn('size_toggle', function($btn, $msg) {
 			$msg.toggleClass('smallmsg');
 		});
+
+		this.control = new ControlPanel($('.control_panel', this.$main.parent()), this);
 	},
 
 	active_msg_btn: function(cls, handler) {
@@ -275,6 +307,8 @@ OverlogBoard = {
 		b.push_parent( b.div('header') );
 		b.span().text('PID: ');
 		b.span('pid').text(msg.pid);
+		b.span().text('THR: ');
+		b.span('thr').text(msg.thread.name);
 		var $tog_stack = b.span('stack_toggle').addClass('button').text('+ stack');
 		b.span('size_toggle').addClass('button').text('+ enlarge');
 		/*
@@ -362,8 +396,6 @@ OverlogBoard = {
 		switcher.add_item(msg);
 
 	}
-
-
 
 };
 
