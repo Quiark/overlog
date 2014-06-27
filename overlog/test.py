@@ -4,6 +4,7 @@ import logging
 
 import overlog
 OLOG = overlog.Logger()
+OLOG.trace_except()
 
 
 
@@ -24,6 +25,16 @@ class SomeClass(object):
 	def call_something(self):
 		return self.test_abc()
 
+	def fact(self, n):
+		if (n == 0):
+			OLOG.loc()
+			return 1
+		val = n
+		val *= self.fact(n - 1)
+		OLOG.data(val, n)
+		print 'fact', n, val
+		return val
+
 	def test_abc(self):
 		OLOG.data('hello', {
 			1: 'world',
@@ -43,6 +54,10 @@ if __name__ == '__main__':
 	x.test_abc()
 
 	while True:
-		z = raw_input('>')
-		OLOG.data(z, SomeClass())
-		x.call_something()
+		try:
+			z = raw_input('>')
+			OLOG.data(z, SomeClass())
+			x.call_something()
+			x.fact(3)
+		except:
+			pass

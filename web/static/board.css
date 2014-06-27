@@ -38,7 +38,6 @@ div.timing-block-opener {
 
 /* Overlog */
 div.msg {
-	background-color: #cfd;
 	border: 1px solid gray;
 	font-family: "Segoe UI", sans-serif;
 }
@@ -75,25 +74,23 @@ div.msg > .header {
 }
 
 div.msg span.name {
+	/*
 	background-color: #fca;
 	color: #444;
+	*/
 	font-weight: bold;
 	display: inline-block;
 	padding: 2px;
+	font-family: Consolas, monospace;
 }
 
-div.msg td.value {
-	max-width: 100em;
-}
 
 div.msg tr.line td {
 	border-bottom: 1px solid #ccc;
 }
 
-div.msg td.collapse {
-	background-color: #4c4;
-	color: white;
-	width: 20px;
+div.msg .collapse {
+	width: 16px;
 }
 
 div.msg .data {
@@ -113,9 +110,13 @@ div.msg div.stack span.function {
     color: gray;
 }
 
+div.data span.value {
+	font-family: Consolas, monospace;
+}
+
 div.msg div.stack span.line {
     font-family: monospace;
-    background-color: #ffc;
+    /* background-color: #ffc; */
     display: block;
 }
 
@@ -136,8 +137,8 @@ div.msg div.header * {
 	padding: 4px;
 	font-weight: bold;
 	margin-top: 0px;
-	border-right: 2px solid #226;
-	border-bottom: 3px solid #226;
+	border-right: 1px solid #226;
+	border-bottom: 1px solid #226;
 	border-radius: 2px;
 
 	cursor: default;
@@ -150,8 +151,6 @@ div.msg div.header * {
 }
 
 .button:active {
-	margin-top: 2px;
-	border-bottom: 1px solid #226;
 }
 
 .button.disabled {

@@ -44,6 +44,8 @@ class Dumper(object):
 	'Converts any Python thing into a JSON-compatible object'
 	# TODO: for objects, converting to dict is not enough, need at least type
 
+	PRIMITIVES = (int, long, float, str, unicode)
+
 	def dump(self, obj):
 		self.seen = set()
 		res = self.convert_obj(obj)
@@ -63,17 +65,23 @@ class Dumper(object):
 			return u'<object repr:"{}" already seen before>'.format(repr(obj)[:MAX_STRDUMP])
 
 	def convert_obj(self, obj, depth=4):
-		if depth == 0: return '<too deep>'
+		# handle binary
+		obj = self.handle_binary(obj)
+
+		# primitive objects can be always handled
+		#composite = (list, dict, tuple, set)
+		if isinstance(obj, self.PRIMITIVES): return obj
+
+		# if seen, skip
 		if id(obj) in self.seen:
 			return self.print_seen(obj)
 
 		self.seen.add(id(obj))
 
-		prim = (int, long, float, str, unicode)
-		composite = (list, dict, tuple, set)
-		obj = self.handle_binary(obj)
-		if isinstance(obj, prim): return obj
+		# limit depth
+		if depth == 0: return '<too deep>'
 
+		# normal execution - go inside
 		if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
 			return [self.convert_obj(x, depth-1) for x in obj]
 		if isinstance(obj, dict):
@@ -85,8 +93,9 @@ class Dumper(object):
 			res = dump()
 		else:
 			res = self.std_dump(obj)
+		res['__type'] = str(type(obj))
 
-		return self.convert_obj(res, depth-1)
+		return self.convert_obj(res, depth)
 
 	def stringize(self, x):
 		if isinstance(x, unicode): return x
@@ -119,18 +128,34 @@ class Dumper(object):
 				'filename': obj[0],
 				'lineno': obj[1]}
 
+	def dump_frameobject(self, frame, depth=10):
+		fr = frame
+		data = []
+		count = 0
+		while (fr != None) and (count < depth):
+			record = {'__lineno':fr.f_lineno,
+						'__name': fr.f_code.co_name,
+						'__filename': fr.f_code.co_filename}
+			record.update( fr.f_locals )
+			data.append(record)
+
+			fr = fr.f_back
+			count += 1
+
+		return data
 
 class Logger(object):
 	def __init__(self):
 		self.rc = RCP3Client()
 		self.rc.Connect("tcp://localhost:5111")
+		self.to_trace = set()
 		# use when it's not necessary to re-create Dumper
 		self.dmp = Dumper()
 
 
 	def data(self, *args, **kwargs):
 		data = self.pack_args(*args, **kwargs)
-		self.send_data(data)
+		self.send_data(data, mode='data')
 
 	def pack_args(self, *args, **kwargs):
 		data = {}
@@ -189,19 +214,41 @@ class Logger(object):
 		self.rc.SendMessage(msg, 'OverLog#')
 
 	def trace_fmt(self):
-		sys.setprofile(self.tracer)
+		if len(self.to_trace) == 0:
+			sys.setprofile(self.tracer)
+
+		self.to_trace.add(self.t_format)
+
+	def trace_except(self):
+		if len(self.to_trace) == 0:
+			sys.setprofile(self.tracer)
+
+		self.to_trace.add(self.t_except)
+
+
+	def t_format(self, frame, event, arg):
+		if event != 'c_call' or arg.__name__ != 'format' or not isinstance(arg.__self__, (str, unicode)):
+			return False
+		return frame.f_locals
+
+	def t_except(self, frame, event, arg):
+		if event != 'exception': return False
+		return Dumper().dump_frameobject(frame)
 
 	def tracer(self, frame, event, arg):
-		if event != 'c_call' or arg.__name__ != 'format' or not isinstance(arg.__self__, (str, unicode)): return
 		if frame.f_code.co_filename == __file__: return
-		#print frame.f_locals
-		data = frame.f_locals
+		res = None
+		for x in self.to_trace:
+			res = x(frame, event, arg)
+			if res: break
+
+		if not res: return
+
+		data = res
 		caller = {'name': frame.f_code.co_name,
 					'filename': frame.f_code.co_filename,
 					'lineno': frame.f_lineno}
-		self.send_data(data, caller=caller)
-
-
+		self.send_data(data, caller=caller, mode='tracer')
 
 
 	# decorator
@@ -209,7 +256,7 @@ class Logger(object):
 		def _internal(_self, *args, **kwargs):
 			data = self.pack_args(*args, **kwargs)
 			caller = Dumper().dump_function(fn)
-			self.send_data(data, func_name=fn.func_name, caller=caller)
+			self.send_data(data, func_name=fn.func_name, caller=caller, mode='method decorator')
 			return fn(_self, *args, **kwargs)
 
 		return _internal
@@ -219,14 +266,17 @@ class Logger(object):
 	def classy(self, cls):
 		return cls
 
-	def loc(self, loc):
+	def loc(self):
 		# let's make it go all the way up the stack trace and collect locals
 		st = inspect.stack() # may also use inspect.trace()
 		data = []
 		for fr in st:
-			data.append( fr.fr_locals() )
+			data.append( fr[0].f_locals )
 
-		self.data(data)
+		self.send_data(data, mode='loc')
 
+	def exception(self):
+		etype, evalue, etb = sys.exc_info()
+		self.data(Dumper().dump_frameobject(etb.tb_frame))
 
 
