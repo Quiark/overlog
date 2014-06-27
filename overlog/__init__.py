@@ -11,6 +11,10 @@ import threading
 
 import zmq
 
+# TODO: add an easy way to check if a function was called, ideally without changing code (tracing)
+#		and from editor
+#
+
 
 MAX_STRDUMP=100
 HAS_UTF8 = re.compile(r'[\x80-\xff]')
@@ -62,7 +66,9 @@ class Dumper(object):
 			return u'<object "{}" already seen before>'.format(unicode(
 				self.handle_binary(obj))[:MAX_STRDUMP])
 		except:
-			return u'<object repr:"{}" already seen before>'.format(repr(obj)[:MAX_STRDUMP])
+			# got some weird ctypes object here that can't handle repr
+			pass
+			#return u'<object repr:"{}" already seen before>'.format(repr(obj)[:MAX_STRDUMP])
 
 	def convert_obj(self, obj, depth=4):
 		# handle binary
@@ -128,6 +134,11 @@ class Dumper(object):
 				'filename': obj[0],
 				'lineno': obj[1]}
 
+	def dump_frame_to_caller(self, frame):
+		return {'name': frame.f_code.co_name,
+				'filename': frame.f_code.co_filename,
+				'lineno': frame.f_lineno}
+
 	def dump_frameobject(self, frame, depth=10):
 		fr = frame
 		data = []
@@ -148,6 +159,7 @@ class Logger(object):
 	def __init__(self):
 		self.rc = RCP3Client()
 		self.rc.Connect("tcp://localhost:5111")
+		self.my_thread = threading.current_thread().ident
 		self.to_trace = set()
 		# use when it's not necessary to re-create Dumper
 		self.dmp = Dumper()
@@ -171,6 +183,8 @@ class Logger(object):
 	def send_data(self, data, **kwargs):
 		try:
 			thr = threading.current_thread()
+			if thr.ident != self.my_thread: return
+
 			msg = {'time': time.time(),
 				'pid': os.getpid(),
 				'stack': self.filter_stack( traceback.extract_stack() ),
@@ -220,20 +234,12 @@ class Logger(object):
 		self.to_trace.add(self.t_format)
 
 	def trace_except(self):
-		if len(self.to_trace) == 0:
-			sys.setprofile(self.tracer)
-
-		self.to_trace.add(self.t_except)
-
+		sys.settrace(self.exc_tracer)
 
 	def t_format(self, frame, event, arg):
 		if event != 'c_call' or arg.__name__ != 'format' or not isinstance(arg.__self__, (str, unicode)):
 			return False
 		return frame.f_locals
-
-	def t_except(self, frame, event, arg):
-		if event != 'exception': return False
-		return Dumper().dump_frameobject(frame)
 
 	def tracer(self, frame, event, arg):
 		if frame.f_code.co_filename == __file__: return
@@ -245,17 +251,35 @@ class Logger(object):
 		if not res: return
 
 		data = res
-		caller = {'name': frame.f_code.co_name,
-					'filename': frame.f_code.co_filename,
-					'lineno': frame.f_lineno}
+		caller = self.dmp.dump_frame_to_caller(frame)
 		self.send_data(data, caller=caller, mode='tracer')
+
+	def exc_tracer(self, frame, event, arg):
+		# this gets invoked for all functions up the call chain
+		ret = self.exc_tracer
+		if event != 'exception': return ret
+		try:
+			caller = self.dmp.dump_frame_to_caller(frame)
+
+			# filter to project filenames
+			if not ('DesktopClient' in caller['filename']): return ret
+
+			exception, evalue, etraceback = arg
+
+			dat = Dumper().dump_frameobject(frame)
+			dat.append(str(exception))
+			self.send_data(dat, caller=caller, mode='exc_tracer')
+
+		except Exception as e:
+			print 'exception ', e
+		return ret
 
 
 	# decorator
 	def method(self, fn):
 		def _internal(_self, *args, **kwargs):
 			data = self.pack_args(*args, **kwargs)
-			caller = Dumper().dump_function(fn)
+			caller = self.dmp.dump_function(fn)
 			self.send_data(data, func_name=fn.func_name, caller=caller, mode='method decorator')
 			return fn(_self, *args, **kwargs)
 
@@ -280,3 +304,4 @@ class Logger(object):
 		self.data(Dumper().dump_frameobject(etb.tb_frame))
 
 
+OLOG = Logger()
