@@ -8,6 +8,7 @@ import inspect
 import logging
 import traceback
 import threading
+import _threading_local
 
 import zmq
 
@@ -26,7 +27,7 @@ def ByteToHex( byteStr ):
 	return ''.join( [ "%02X" % ord( x ) for x in byteStr ] ).strip()
 
 
-class RCP3Client(object):
+class ZmqClient(object):
 	def __init__(self):
 		pass
 
@@ -40,7 +41,7 @@ class RCP3Client(object):
 			raise Exception("Attempt to send message without connection.")
 
 		json_val = json.dumps(value)
-		print 'msg {} being sent in overlog.client'.format(time.time())
+		logging.debug('msg {} being sent in overlog.client'.format(time.time()))
 		self._socket.send(json_val)
 
 
@@ -70,6 +71,9 @@ class Dumper(object):
 			pass
 			#return u'<object repr:"{}" already seen before>'.format(repr(obj)[:MAX_STRDUMP])
 
+	def print_toodeep(self, obj, depth):
+		return '<too deep>'
+
 	def convert_obj(self, obj, depth=4):
 		# handle binary
 		obj = self.handle_binary(obj)
@@ -85,7 +89,11 @@ class Dumper(object):
 		self.seen.add(id(obj))
 
 		# limit depth
-		if depth == 0: return '<too deep>'
+		if depth == 0: return self.print_toodeep(obj, depth)
+
+		return self.convert_obj_rec(obj, depth)
+
+	def convert_obj_rec(self, obj, depth=4):
 
 		# normal execution - go inside
 		if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
@@ -99,7 +107,6 @@ class Dumper(object):
 			res = dump()
 		else:
 			res = self.std_dump(obj)
-		res['__type'] = str(type(obj))
 
 		return self.convert_obj(res, depth)
 
@@ -155,10 +162,70 @@ class Dumper(object):
 
 		return data
 
+
+class NewDumper(Dumper):
+	'''New format:
+	{
+		data:
+			__class: list
+			__data:
+				0: 'abc'
+				1: 'def'
+				2: 4
+				3:
+					__class: BackupTask
+					__data:
+						target_folder: "C:/temp"
+				4:
+					__class: AppFrame
+					__seen_at: ?? some ref ?? 
+					__data: (string repr)
+		
+
+	There are two modes in which an object can be serialised. Directly, where
+	there is no metadata about a given object and extended where the data
+	is first wrapped in another JSON object with some metadata. POD types
+	such as int, string, ... will typically be entered directly.
+	
+
+	'''
+
+	def convert_obj_rec(self, obj, depth=4):
+		if isinstance(obj, (list, tuple)):
+			return Dumper.convert_obj_rec(self, obj, depth)
+		else:
+			# custom type (or set or dict)
+			return self.extend_wrap( obj, Dumper.convert_obj_rec(self, obj, depth) )
+
+
+	def extend_wrap(self, obj, dumped):
+		return {'__class': type(obj).__name__,
+				'__data': dumped}
+
+	def print_seen(self, obj):
+		if obj in ['', None, [], (), {}, set()]: return obj
+		strdata = ''
+		try:
+			if isinstance(obj, str):
+				strdata = self.handle_binary(str)
+			elif isinstance(obj, unicode):
+				strdata = str
+			else:
+				strdata = self.handle_binary(str(obj)[:MAX_STRDUMP])
+		except:
+			logging.warning('Got something of type {} that cant be converted'.format(str(type(obj))))
+
+		return {'__seen': True, '__data': strdata}
+
+	def print_toodeep(self, obj, depth):
+		return {'__err': 'too_deep'}
+
+
 class Logger(object):
 	def __init__(self):
-		self.rc = RCP3Client()
-		self.rc.Connect("tcp://localhost:5111")
+		self.rc = ZmqClient()
+		self.rc.Connect("tcp://10.0.0.103:5111")
+
 		self.my_thread = threading.current_thread().ident
 		self.to_trace = set()
 		# use when it's not necessary to re-create Dumper
@@ -183,7 +250,9 @@ class Logger(object):
 	def send_data(self, data, **kwargs):
 		try:
 			thr = threading.current_thread()
-			if thr.ident != self.my_thread: return
+			if thr.ident != self.my_thread:
+				logging.warning('Called wrong logger from wrong thread.')
+				return
 
 			msg = {'time': time.time(),
 				'pid': os.getpid(),
@@ -304,4 +373,20 @@ class Logger(object):
 		self.data(Dumper().dump_frameobject(etb.tb_frame))
 
 
-OLOG = Logger()
+class LogManager(object):
+	def __init__(self):
+		self.tlocal = _threading_local.local()
+
+	def logger(self):
+		try:
+			return self.tlocal.logger
+		except AttributeError:
+			res = self.tlocal.logger = Logger()
+			return res
+
+
+MANAGER = LogManager()
+
+def Overlog():
+	return MANAGER.logger()
+
