@@ -98,8 +98,14 @@ Build.prototype.li = function(kls) {
 
 Build.prototype.dumpobj = function(indent, obj, $_parent) {
 	this.push_parent($_parent);
-
 	var self = this;
+
+	// get metadata
+	var __class = obj.__class;
+	if (__class != undefined) {
+		// is extended, go inside
+		obj = obj.__data;
+	}
 
 	for (var key in obj) {
 		var val = obj[key];
@@ -117,7 +123,7 @@ Build.prototype.dumpobj = function(indent, obj, $_parent) {
 
 		} else {
 			// just a simple text
-			var $val = this.span('value.kt').text('[...]');
+			var $val = this.span('value.kt').text(self.print_object_summary(val));
 			this.pop_parent();
 
 			// nested value is next div
@@ -136,6 +142,8 @@ Build.prototype.dumpobj = function(indent, obj, $_parent) {
 					$sub.data('val-expanded', true);
 				}
 				$sub.slideToggle(100);
+
+				self.toggleButton($(this));
 			});
 
 			$sub.toggle(); // invisible by default
@@ -145,6 +153,24 @@ Build.prototype.dumpobj = function(indent, obj, $_parent) {
 	}
 
 	this.pop_parent();
+}
+
+Build.prototype.toggleButton = function($btn) {
+	if ($btn.text() == '+')
+		$btn.text('-');
+	else
+		$btn.text('+');
+}
+
+Build.prototype.print_object_summary = function(val) {
+	var res = '[...]';
+	if (val && val.__class) {
+		res += ' is ' + val.__class;
+	}
+	if (val && val.__id) {
+		res += '@' + val.__id;
+	}
+	return res;
 }
 
 Build.prototype.dumpstack = function(stack, $_parent) {

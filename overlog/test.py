@@ -3,7 +3,7 @@ import sys
 import logging
 
 import overlog
-OLOG = overlog.Logger()
+OLOG = overlog.Overlog()
 OLOG.trace_except()
 
 
@@ -54,10 +54,7 @@ if __name__ == '__main__':
 	x.test_abc()
 
 	while True:
-		try:
 			z = raw_input('>')
 			OLOG.data(z, SomeClass())
 			x.call_something()
 			x.fact(3)
-		except:
-			pass

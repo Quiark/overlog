@@ -41,13 +41,19 @@ class ZmqClient(object):
 			raise Exception("Attempt to send message without connection.")
 
 		json_val = json.dumps(value)
+		#pprint.pprint(value)
 		logging.debug('msg {} being sent in overlog.client'.format(time.time()))
 		self._socket.send(json_val)
 
 
+class FrameDump(object):
+	def __init__(self, localvars, position):
+		self.localvars = localvars
+		self.position = position
+
+
 class Dumper(object):
 	'Converts any Python thing into a JSON-compatible object'
-	# TODO: for objects, converting to dict is not enough, need at least type
 
 	PRIMITIVES = (int, long, float, str, unicode)
 
@@ -79,7 +85,6 @@ class Dumper(object):
 		obj = self.handle_binary(obj)
 
 		# primitive objects can be always handled
-		#composite = (list, dict, tuple, set)
 		if isinstance(obj, self.PRIMITIVES): return obj
 
 		# if seen, skip
@@ -151,11 +156,10 @@ class Dumper(object):
 		data = []
 		count = 0
 		while (fr != None) and (count < depth):
-			record = {'__lineno':fr.f_lineno,
+			position = {'__lineno':fr.f_lineno,
 						'__name': fr.f_code.co_name,
 						'__filename': fr.f_code.co_filename}
-			record.update( fr.f_locals )
-			data.append(record)
+			data.append(FrameDump( fr.f_locals, position ))
 
 			fr = fr.f_back
 			count += 1
@@ -178,20 +182,20 @@ class NewDumper(Dumper):
 						target_folder: "C:/temp"
 				4:
 					__class: AppFrame
-					__seen_at: ?? some ref ?? 
+					__seen_at: ?? some ref ??
 					__data: (string repr)
-		
+
 
 	There are two modes in which an object can be serialised. Directly, where
 	there is no metadata about a given object and extended where the data
 	is first wrapped in another JSON object with some metadata. POD types
 	such as int, string, ... will typically be entered directly.
-	
+
 
 	'''
 
 	def convert_obj_rec(self, obj, depth=4):
-		if isinstance(obj, (list, tuple)):
+		if isinstance(obj, (list, tuple, dict)):
 			return Dumper.convert_obj_rec(self, obj, depth)
 		else:
 			# custom type (or set or dict)
@@ -200,6 +204,7 @@ class NewDumper(Dumper):
 
 	def extend_wrap(self, obj, dumped):
 		return {'__class': type(obj).__name__,
+				'__id': id(obj),
 				'__data': dumped}
 
 	def print_seen(self, obj):
@@ -224,12 +229,12 @@ class NewDumper(Dumper):
 class Logger(object):
 	def __init__(self):
 		self.rc = ZmqClient()
-		self.rc.Connect("tcp://10.0.0.103:5111")
+		self.rc.Connect("tcp://localhost:5111")
 
 		self.my_thread = threading.current_thread().ident
 		self.to_trace = set()
 		# use when it's not necessary to re-create Dumper
-		self.dmp = Dumper()
+		self.dmp = NewDumper()
 
 
 	def data(self, *args, **kwargs):
@@ -257,7 +262,7 @@ class Logger(object):
 			msg = {'time': time.time(),
 				'pid': os.getpid(),
 				'stack': self.filter_stack( traceback.extract_stack() ),
-				'data': Dumper().dump(data),
+				'data': NewDumper().dump(data),
 				'thread': {
 					'id': thr.ident,
 					'name': thr.name
@@ -297,10 +302,13 @@ class Logger(object):
 		self.rc.SendMessage(msg, 'OverLog#')
 
 	def trace_fmt(self):
-		if len(self.to_trace) == 0:
-			sys.setprofile(self.tracer)
+		#if len(self.to_trace) == 0:
+			#sys.setprofile(self.tracer)
 
 		self.to_trace.add(self.t_format)
+
+	def trace_function(self):
+		self.to_trace.add(self.t_function)
 
 	def trace_except(self):
 		sys.settrace(self.exc_tracer)
@@ -309,6 +317,13 @@ class Logger(object):
 		if event != 'c_call' or arg.__name__ != 'format' or not isinstance(arg.__self__, (str, unicode)):
 			return False
 		return frame.f_locals
+
+
+	FUN_NAMES = set(['read_impl', 'crypto_init', 'symlink'])
+	def t_function(self, frame, event, arg):
+		coname = frame.f_code.co_name
+		if event != 'call' or not (coname in self.FUN_NAMES): return False
+		return self.dmp.dump_frameobject(frame)
 
 	def tracer(self, frame, event, arg):
 		if frame.f_code.co_filename == __file__: return
@@ -326,8 +341,11 @@ class Logger(object):
 	def exc_tracer(self, frame, event, arg):
 		# this gets invoked for all functions up the call chain
 		ret = self.exc_tracer
-		if event != 'exception': return ret
 		try:
+			if event != 'exception':
+				self.tracer(frame, event, arg)
+				return ret
+
 			caller = self.dmp.dump_frame_to_caller(frame)
 
 			# filter to project filenames
@@ -335,7 +353,7 @@ class Logger(object):
 
 			exception, evalue, etraceback = arg
 
-			dat = Dumper().dump_frameobject(frame)
+			dat = NewDumper().dump_frameobject(frame)
 			dat.append(str(exception))
 			self.send_data(dat, caller=caller, mode='exc_tracer')
 
@@ -370,7 +388,7 @@ class Logger(object):
 
 	def exception(self):
 		etype, evalue, etb = sys.exc_info()
-		self.data(Dumper().dump_frameobject(etb.tb_frame))
+		self.data(NewDumper().dump_frameobject(etb.tb_frame))
 
 
 class LogManager(object):
@@ -384,6 +402,7 @@ class LogManager(object):
 			res = self.tlocal.logger = Logger()
 			return res
 
+logging.basicConfig(level=0)
 
 MANAGER = LogManager()
 
