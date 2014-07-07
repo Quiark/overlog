@@ -34,9 +34,35 @@ class NoCacheStaticFileHandler(tornado.web.StaticFileHandler):
 		self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
 
 
+class GetSourceHandler(tornado.web.RequestHandler):
+	def initialize(self, passer):
+		self.passer = passer
+
+	def post(self):
+		CONTEXT = 4
+
+		logging.debug(self.passer.cwd)
+		js = json.loads(self.request.body)
+		fname = os.path.join(self.passer.cwd[ js['pid'] ], js['filename'])
+		lineno = js['lineno']
+
+		with open(fname) as inf:
+			lines = inf.readlines()
+
+			dat = lines[lineno-CONTEXT:lineno+CONTEXT]
+			dat = map(lambda x: '{}{}:{}'.format(x[0], '>' if x[0] == lineno else '', x[1]),
+						zip(
+							range(lineno-CONTEXT, lineno+CONTEXT),
+							dat))
+
+		self.write(''.join(dat))
+
+
+
 class MessagePasser(object):
 	def __init__(self):
 		self.wsock = None
+		self.cwd = {}
 
 	def set_websocket(self, wsock):
 		self.wsock = wsock
@@ -44,11 +70,21 @@ class MessagePasser(object):
 	def zmq_recv(self, msgs):
 		if self.wsock == None:
 			logging.error('No WebSocket connected')
-			return
 
 		for i in msgs:
-			#jsonMessage = json.loads(i)
-			self.wsock.write_message(i)
+			logging.debug('zmq recv msg ' + i)
+			if i[0] == '#':
+				self.control_message(i)
+			elif self.wsock:
+				self.wsock.write_message(i)
+
+	def control_message(self, msg):
+		js = json.loads(msg[1:])
+		logging.info('Control message ' + msg)
+
+		ctl = js['__control']
+		if ctl == 'set_cwd':
+			self.cwd[ js['pid'] ] = js['cwd']
 
 
 def run(port):
@@ -66,7 +102,7 @@ def run(port):
 		app = tornado.web.Application([
 			(r'/static/(.*)', NoCacheStaticFileHandler, {'path': os.path.join(os.path.dirname(__file__), "static")}),
 			(r'/WebSockets/', WebSocketHandler, {'passer': passer}),
-
+			(r'/getsrc/', GetSourceHandler, {'passer': passer})
 		])
 
 		app.listen(port)
@@ -75,4 +111,5 @@ def run(port):
 		logging.exception('in main loop')
 
 if __name__ == '__main__':
+	logging.basicConfig(level=0)
 	run(8111)

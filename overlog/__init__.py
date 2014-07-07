@@ -36,14 +36,24 @@ class ZmqClient(object):
 		self._socket = self._context.socket(zmq.PUB)
 		self._socket.connect(address)
 
-	def SendMessage(self, value, streamName=None, commands=None):
+		for i in range(4):
+			self.SendMessage({
+						'__control': 'set_cwd',
+						'pid': os.getpid(),
+						'cwd': os.getcwdu()
+			})
+
+	def SendMessage(self, value):
 		if self._socket == None:
 			raise Exception("Attempt to send message without connection.")
 
 		json_val = json.dumps(value)
 		#pprint.pprint(value)
-		logging.debug('msg {} being sent in overlog.client'.format(time.time()))
-		self._socket.send(json_val)
+
+		dat = json_val
+		if ('__control' in value): dat = '#' + json_val
+		logging.debug('msg {} being sent in overlog.client'.format(dat[:16]))
+		self._socket.send(dat)
 
 
 class FrameDump(object):
@@ -156,9 +166,10 @@ class Dumper(object):
 		data = []
 		count = 0
 		while (fr != None) and (count < depth):
-			position = {'__lineno':fr.f_lineno,
-						'__name': fr.f_code.co_name,
-						'__filename': fr.f_code.co_filename}
+			position = {'pid': os.getpid(),
+						'lineno':fr.f_lineno,
+						'name': fr.f_code.co_name,
+						'filename': fr.f_code.co_filename}
 			data.append(FrameDump( fr.f_locals, position ))
 
 			fr = fr.f_back
@@ -299,7 +310,7 @@ class Logger(object):
 		return stack[:-(cutoff-1)] if cutoff != 0 else stack
 
 	def handle_msg(self, msg):
-		self.rc.SendMessage(msg, 'OverLog#')
+		self.rc.SendMessage(msg)
 
 	def trace_fmt(self):
 		#if len(self.to_trace) == 0:

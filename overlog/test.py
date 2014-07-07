@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import logging
 
 import overlog
@@ -27,7 +28,7 @@ class SomeClass(object):
 
 	def fact(self, n):
 		if (n == 0):
-			OLOG.loc()
+			raise RuntimeError('ty we')
 			return 1
 		val = n
 		val *= self.fact(n - 1)
@@ -54,7 +55,12 @@ if __name__ == '__main__':
 	x.test_abc()
 
 	while True:
+		try:
 			z = raw_input('>')
 			OLOG.data(z, SomeClass())
 			x.call_something()
 			x.fact(3)
+		except:
+			OLOG.exception()
+			time.sleep(1)
+

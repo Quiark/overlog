@@ -1,16 +1,17 @@
 SocketClient = {
-	//server_name: 'ws://localhost:8111/WebSockets/',
 	server_name: 'ws:/'+ location.host +'/WebSockets/',
 	reconnectingTimer : undefined,
 	paused : false,
 
 	Connect : function(){
+		var self = this;
+		console.log('Connectiong to WS at ', this.server_name);
+
 		var ws = new WebSocket(this.server_name);
 		ws.onmessage = this.on_message;
 		ws.onclose = function() { 
 			$("#bottom-information-panel").html("Disconnected. Waiting 1 second before reconnecting...");
-			// TODO
-			//this.reconnectingTimer = window.setInterval("javascript:SocketClient.Reconnect()",1000);
+			self.reconnectingTimer = setInterval("javascript:SocketClient.Reconnect()", 1000);
 		};
 		ws.onopen = function(){ 
 			$("#bottom-information-panel").html("Connected.");
@@ -20,7 +21,7 @@ SocketClient = {
 	Reconnect : function(){
 		$("#bottom-information-panel").html("Disconnected. Reconnecting...");
 		this.Connect();
-		window.clearInterval(this.reconnectingTimer)
+		clearInterval(this.reconnectingTimer);
 	},
 
 	FreezeConsole:function(){
@@ -96,7 +97,11 @@ Build.prototype.li = function(kls) {
 	return this.elem('li', kls);
 }
 
-Build.prototype.dumpobj = function(indent, obj, $_parent) {
+/*
+ * owner: some top-level object which coordinates behaviour of this
+ *		dump. Currently for keeping track of open branches
+ */
+Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 	this.push_parent($_parent);
 	var self = this;
 
@@ -107,10 +112,15 @@ Build.prototype.dumpobj = function(indent, obj, $_parent) {
 		obj = obj.__data;
 	}
 
+	if (__class == 'FrameDump') {
+		this.dump_FrameDump(indent, obj, $_parent, owner, path);
+		return;
+	}
+
 	for (var key in obj) {
 		var val = obj[key];
 
-		var $line = this.div('line');
+		var $line = this.div('line').attr('data-key', key);
 		this.push_parent($line);
 
 		var $collapse = this.span('button').addClass('collapse').text('+');
@@ -127,23 +137,19 @@ Build.prototype.dumpobj = function(indent, obj, $_parent) {
 			this.pop_parent();
 
 			// nested value is next div
-			var $sub = this.div('nested');
-			$sub.data('val', val);
+			var $sub = this.div('nested').attr('data-key', key);
+			var full_path = path.concat([key]);
+			var node = new DumpNode(key, val, owner, $sub, indent, full_path, self, $collapse);
+			$sub.data('node', node);
 			$sub.data('val-expanded', false);
 			this.push_parent($sub);
 
 			$collapse.data('$sub', $sub);
 			$collapse.click(function(evt) {
 				var $sub = $(this).data('$sub');
-				var val = $sub.data('val');
+				var node = $sub.data('node');
 
-				if (!$sub.data('val-expanded')) {
-					self.dumpobj(indent + 1, val, $sub);
-					$sub.data('val-expanded', true);
-				}
-				$sub.slideToggle(100);
-
-				self.toggleButton($(this));
+				node.expand(true);
 			});
 
 			$sub.toggle(); // invisible by default
@@ -155,12 +161,6 @@ Build.prototype.dumpobj = function(indent, obj, $_parent) {
 	this.pop_parent();
 }
 
-Build.prototype.toggleButton = function($btn) {
-	if ($btn.text() == '+')
-		$btn.text('-');
-	else
-		$btn.text('+');
-}
 
 Build.prototype.print_object_summary = function(val) {
 	var res = '[...]';
@@ -193,6 +193,23 @@ Build.prototype.dumpstack = function(stack, $_parent) {
 	this.pop_parent();
 }
 
+Build.prototype.dump_FrameDump = function(indent, obj, $parent, owner, path) {
+	var self = this;
+	this.push_parent($parent);
+
+	this.span('button').text('src').click(function(evt) {
+		jQuery.post('/getsrc/', JSON.stringify(obj.position), function(data) {
+			self.push_parent($parent);
+			self.elem('pre', 'source').text( data );
+			self.pop_parent();
+		});
+	});
+
+	this.dumpobj(indent, obj.position, this.div('c'), owner, path);
+	this.dumpobj(indent, obj.localvars, $parent, owner, path);
+
+	this.pop_parent();
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 function rnd_choose(choices) {
@@ -211,6 +228,7 @@ function Stack(builder, $parent) {
 	this.$choices = b.div('choices');
 	this.$container = b.div('container');
 
+	this.opened = {};
 }
 
 Stack.prototype.add_item = function(val) {
@@ -236,8 +254,76 @@ Stack.prototype.do_switch = function(key) {
 	var item = this.items[key];
 	this.$container.empty();
 
-	this.builder( item, this.$container );
+	this.builder( this, item, this.$container );
+
+	this.reopen( this.opened, $('.msg .data', this.$container) );
 }
+
+Stack.prototype.reopen = function(opened_struct, $container) {
+	for (var k in opened_struct) {
+		var $elem = $('.nested[data-key='+k+']', $container);
+		var node = $elem.data('node');
+
+		node.expand(false);
+		this.reopen( opened_struct[k], $elem );
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+function DumpNode(key, val, owner, $sub, indent, full_path, build, $collapse) {
+	this.key = key;
+	this.val = val;
+	this.owner = owner;
+	this.$sub = $sub;
+	this.indent = indent;
+	this.full_path = full_path;
+	this.build = build;
+	this.$collapse = $collapse;
+
+	this.expanded = false;
+}
+
+DumpNode.prototype.expand = function(slide) {
+	if (slide == undefined) slide = true;
+
+	if (!this.$sub.data('val-expanded')) {
+		this.build.dumpobj(this.indent + 1, this.val, this.$sub, this.owner, this.full_path);
+		this.$sub.data('val-expanded', true);
+	}
+
+	if (slide){ 
+		this.$sub.slideToggle(100);
+	} else {
+		this.$sub.toggle();
+	}
+	this.do_expand();
+}
+
+DumpNode.prototype.do_expand = function() {
+	var $btn = this.$collapse;
+	var opened;
+	if ($btn.text() == '+') {
+		$btn.text('-');
+		opened = true;
+	} else {
+		$btn.text('+');
+		opened = false;
+	}
+
+	var opnode = this.owner.opened;
+	for (var i = 0; i < this.full_path.length; i++) {
+		var k = this.full_path[i];
+		if ((k in opnode) && !opened && (i == this.full_path.length - 1)) {
+			delete opnode[k];
+		} else if (!(k in opnode) && opened) {
+			opnode = opnode[k] = {};
+		} else {
+			// just go in
+			opnode = opnode[k];
+		}
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 ControlPanel = function($parent, overlog) {
 	this.$parent = $parent;
@@ -330,12 +416,14 @@ OverlogBoard = {
 		this.add_by_group(msg);
 	},
 
-	build_message: function(msg, $parent) {
+	build_message: function(stack, msg, $parent) {
 		var b = new Build();
 		var $msg = b.div('msg.hi').appendTo($parent);
-		$msg.data(msg);
+		$msg.data('msg', msg);
+		$msg.data('stack', stack);
+
 		$msg.attr('data-pid', msg.pid);
-		$msg.draggable({ containment: "parent", handle: ".header" });
+		//$msg.draggable({ containment: "parent", handle: ".header" });
 		b.push_parent($msg);
 
 		b.push_parent( b.div('header') );
@@ -351,11 +439,11 @@ OverlogBoard = {
 
 		b.dumpstack(msg.stack, b.div('stack').css('display', 'none'));
 		b.set_parent($msg);
-		b.dumpobj(0, msg.data, b.div('data'));
+		b.dumpobj(0, msg.data, b.div('data'), stack, []);
 
 		try {
 			b.set_parent($msg);
-			b.dumpobj(0, msg.caller, b.div('caller'));
+			b.dumpobj(0, msg.caller, b.div('caller'), null, []);
 			$msg.attr('data-caller', msg.caller.hash);
 		} catch (e) { };
 
