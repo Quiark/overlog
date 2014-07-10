@@ -173,3 +173,23 @@ div.group {
 	border: 1px solid #ccf;
 	margin: 2ex;
 }
+
+
+.PID_filter {
+	border: 1px solid black;
+	width: 10em;
+}
+
+.PID_filter li {
+	padding: 4px;
+	list-style-type: none;
+}
+
+.PID_filter li.ui-selecting {
+	background-color: #44f;
+}
+
+.PID_filter li.ui-selected {
+	background-color: #24f;
+	color: #99f;
+}

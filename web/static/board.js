@@ -341,13 +341,31 @@ ControlPanel = function($parent, overlog) {
 			self.refresh();
 		});
 	});
-};
+
+	this.b.pop_parent();
+	this.$pid_filter = this.b.elem('ol', 'PID_filter').addClass('selectable');
+	this.$pid_filter.selectable({
+		stop: function() {
+			var pids = $('.ui-selected', this).map(function(ix, elm) { return $(elm).attr('data-pid'); });
+			self.overlog.set_filter('pid', $.makeArray( pids ));
+			self.refresh();
+		}
+	});
+}
 
 ControlPanel.prototype.refresh = function() {
 	var choices = $('.button.down').map(function(ix, elm) {return $(elm).text(); });
 	OverlogBoard.regroup_by(choices);
-};
+}
 
+ControlPanel.prototype.on_msg = function(msg) {
+	var pid = msg.pid;
+	var $found = $('li[data-pid='+pid+']', this.$pid_filter);
+
+	if ($found.length == 0) {
+		$('<li/>').attr('data-pid', pid).text(pid).appendTo(this.$pid_filter);
+	}
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -377,7 +395,8 @@ OverlogBoard = {
 		};
 
 		this.state = {
-			grouping: ['caller']
+			grouping: ['caller'],
+			filter: null
 		};
 
 		this.groups = {};
@@ -397,6 +416,7 @@ OverlogBoard = {
 		});
 
 		this.control = new ControlPanel($('.control_panel', this.$main.parent()), this);
+
 	},
 
 	active_msg_btn: function(cls, handler) {
@@ -414,6 +434,7 @@ OverlogBoard = {
 	add_message: function(msg) {
 		this.all_data.push(msg);
 		this.add_by_group(msg);
+		this.control.on_msg(msg);
 	},
 
 	build_message: function(stack, msg, $parent) {
@@ -421,6 +442,9 @@ OverlogBoard = {
 		var $msg = b.div('msg.hi').appendTo($parent);
 		$msg.data('msg', msg);
 		$msg.data('stack', stack);
+
+		var time = new Date();
+		time.setTime(msg.time * 1000);
 
 		$msg.attr('data-pid', msg.pid);
 		//$msg.draggable({ containment: "parent", handle: ".header" });
@@ -433,6 +457,8 @@ OverlogBoard = {
 		b.span('thr').text(msg.thread.name);
 		b.span().text('mode: ');
 		b.span('mode').text(msg.mode);
+		b.span().text('time: ');
+		b.span('time').text(time.toString());
 		var $tog_stack = b.span('stack_toggle').addClass('button').text('+ stack');
 		b.span('size_toggle').addClass('button').text('+ enlarge');
 		b.pop_parent();
@@ -462,8 +488,14 @@ OverlogBoard = {
 
 
 	add_by_group: function(msg) {
-		var self = this;
 		// already added to all_data, now just adjust grouping
+		var self = this;
+
+		// consider filter
+		if (this.state.filter) {
+			if ($.inArray( msg[ this.state.filter.field ].toString(), this.state.filter.selected) == -1) return;
+
+		}
 
 		// build total_keyval, containing keyval for each selected grouping
 		var total_keyval = [];
@@ -537,6 +569,13 @@ OverlogBoard = {
 		$.each(this.all_data, function(ix, elm) {
 			self.add_by_group(elm);
 		});
+	},
+
+	set_filter: function(field, selected) {
+		this.state.filter = {
+			field: field,
+			selected: selected
+		};
 	}
 };
 
