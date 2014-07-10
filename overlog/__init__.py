@@ -12,10 +12,6 @@ import _threading_local
 
 import zmq
 
-# TODO: add an easy way to check if a function was called, ideally without changing code (tracing)
-#		and from editor
-#
-
 
 MAX_STRDUMP=100
 HAS_UTF8 = re.compile(r'[\x80-\xff]')
@@ -27,6 +23,11 @@ def ByteToHex( byteStr ):
 	return ''.join( [ "%02X" % ord( x ) for x in byteStr ] ).strip()
 
 
+def trace_works():
+	'Its here to check if tracing works once enabled.'
+	pass
+
+
 class ZmqClient(object):
 	def __init__(self):
 		pass
@@ -36,7 +37,9 @@ class ZmqClient(object):
 		self._socket = self._context.socket(zmq.PUB)
 		self._socket.connect(address)
 
-		for i in range(4):
+		print 'connected, sending control pwd'
+
+		for i in range(3):
 			self.SendMessage({
 						'__control': 'set_cwd',
 						'pid': os.getpid(),
@@ -66,6 +69,7 @@ class Dumper(object):
 	'Converts any Python thing into a JSON-compatible object'
 
 	PRIMITIVES = (int, long, float, str, unicode)
+	DEPTH = 6
 
 	def dump(self, obj):
 		self.seen = set()
@@ -90,7 +94,9 @@ class Dumper(object):
 	def print_toodeep(self, obj, depth):
 		return '<too deep>'
 
-	def convert_obj(self, obj, depth=4):
+	def convert_obj(self, obj, depth=None):
+		if depth == None: depth = self.DEPTH
+
 		# handle binary
 		obj = self.handle_binary(obj)
 
@@ -162,15 +168,23 @@ class Dumper(object):
 				'lineno': frame.f_lineno}
 
 	def dump_frameobject(self, frame, depth=10):
+		FILTER_FILES = ['unittest/case.py', 'nose/case.py', 'unittest\\case.py', 'nose\\case.py', 'nose/suite.py', 'nose\\suite.py']
+		filtered_out = lambda x: any(x.endswith(f) for f in FILTER_FILES)
+
 		fr = frame
 		data = []
 		count = 0
 		while (fr != None) and (count < depth):
-			position = {'pid': os.getpid(),
-						'lineno':fr.f_lineno,
-						'name': fr.f_code.co_name,
-						'filename': fr.f_code.co_filename}
-			data.append(FrameDump( fr.f_locals, position ))
+			filename = fr.f_code.co_filename
+
+			if filtered_out(filename):
+				data.append(filename + ' filtered out')
+			else:
+				position = {'pid': os.getpid(),
+							'lineno':fr.f_lineno,
+							'name': fr.f_code.co_name,
+							'filename': filename}
+				data.append(FrameDump( fr.f_locals, position ))
 
 			fr = fr.f_back
 			count += 1
@@ -244,6 +258,11 @@ class Logger(object):
 
 		self.my_thread = threading.current_thread().ident
 		self.to_trace = set()
+
+		# what must be present in path in order to get events
+		self.filter_project = ''
+		self.filter_function = set(['trace_works'])
+
 		# use when it's not necessary to re-create Dumper
 		self.dmp = NewDumper()
 
@@ -318,8 +337,11 @@ class Logger(object):
 
 		self.to_trace.add(self.t_format)
 
-	def trace_function(self):
+	def trace_function(self, fnlist):
+		self.filter_function.update(fnlist)
 		self.to_trace.add(self.t_function)
+
+		trace_works()
 
 	def trace_except(self):
 		sys.settrace(self.exc_tracer)
@@ -330,10 +352,9 @@ class Logger(object):
 		return frame.f_locals
 
 
-	FUN_NAMES = set(['read_impl', 'crypto_init', 'symlink'])
 	def t_function(self, frame, event, arg):
 		coname = frame.f_code.co_name
-		if event != 'call' or not (coname in self.FUN_NAMES): return False
+		if event != 'call' or not (coname in self.filter_function): return False
 		return self.dmp.dump_frameobject(frame)
 
 	def tracer(self, frame, event, arg):
@@ -360,12 +381,12 @@ class Logger(object):
 			caller = self.dmp.dump_frame_to_caller(frame)
 
 			# filter to project filenames
-			if not ('DesktopClient' in caller['filename']): return ret
+			if not (self.filter_project in caller['filename']): return ret
 
 			exception, evalue, etraceback = arg
 
 			dat = NewDumper().dump_frameobject(frame)
-			dat.append(str(exception))
+			dat.append(evalue)
 			self.send_data(dat, caller=caller, mode='exc_tracer')
 
 		except Exception as e:
@@ -417,6 +438,7 @@ logging.basicConfig(level=0)
 
 MANAGER = LogManager()
 
-def Overlog():
+def ovlg():
 	return MANAGER.logger()
 
+Overlog = ovlg

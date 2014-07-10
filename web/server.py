@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import argparse
 
 import tornado.ioloop
 import tornado.websocket
@@ -111,5 +112,10 @@ def run(port):
 		logging.exception('in main loop')
 
 if __name__ == '__main__':
-	logging.basicConfig(level=0)
+	parser = argparse.ArgumentParser(description='Overlog server')
+	parser.add_argument('-v', '--verbose', dest='verbose', action='store', default=40, 
+			help='Log level')
+	args = parser.parse_args()
+	
+	logging.basicConfig(level=int(args.verbose))
 	run(8111)
