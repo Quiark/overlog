@@ -158,7 +158,8 @@ div.msg div.header * {
 }
 
 .button.down {
-	background-color: #44f;
+	background-color: #97f;
+	color: black;
 	border: none;
 }
 

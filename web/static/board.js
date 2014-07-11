@@ -242,6 +242,8 @@ Stack.prototype.add_item = function(val) {
 	b.set_parent(this.$choices);
 	var $elem = b.span('button').text(key).attr('data-sel', key);
 	$elem.click(function(evt) {
+		$('.button', self.$choices).removeClass('down');
+		$(this).addClass('down');
 		self.do_switch($(this).attr('data-sel'));
 	});
 
@@ -332,7 +334,8 @@ ControlPanel = function($parent, overlog) {
 
 	this.b = new Build();
 	this.b.push_parent(this.$parent);
-	this.b.push_parent(this.b.div('grouping'));
+	this.$grouping = this.b.div('grouping');
+	this.b.push_parent( this.$grouping );
 
 	$.each(this.overlog.group_recipes, function(ix, elm) {
 		self.b.div('button').text(ix).click(function(evt) {
@@ -351,10 +354,12 @@ ControlPanel = function($parent, overlog) {
 			self.refresh();
 		}
 	});
+
+	this.$mode_filter = this.b.elem('ol', 'mode_filter').addClass('selectable');
 }
 
 ControlPanel.prototype.refresh = function() {
-	var choices = $('.button.down').map(function(ix, elm) {return $(elm).text(); });
+	var choices = $('.button.down', this.$grouping).map(function(ix, elm) {return $(elm).text(); });
 	OverlogBoard.regroup_by(choices);
 }
 
@@ -396,7 +401,7 @@ OverlogBoard = {
 
 		this.state = {
 			grouping: ['caller'],
-			filter: null
+			filters: {}
 		};
 
 		this.groups = {};
@@ -492,9 +497,10 @@ OverlogBoard = {
 		var self = this;
 
 		// consider filter
-		if (this.state.filter) {
-			if ($.inArray( msg[ this.state.filter.field ].toString(), this.state.filter.selected) == -1) return;
-
+		for (var key in this.state.filters) {
+		//for (var i = 0; i < this.state.filters.length; i++) {
+			var cur_f = this.state.filters[key];
+			if ($.inArray( msg[ cur_f.field ].toString(), cur_f.selected) == -1) return;
 		}
 
 		// build total_keyval, containing keyval for each selected grouping
@@ -572,7 +578,7 @@ OverlogBoard = {
 	},
 
 	set_filter: function(field, selected) {
-		this.state.filter = {
+		this.state.filters[field] = {
 			field: field,
 			selected: selected
 		};
