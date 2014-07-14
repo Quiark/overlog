@@ -168,7 +168,7 @@ Build.prototype.print_object_summary = function(val) {
 		res += ' is ' + val.__class;
 	}
 	if (val && val.__id) {
-		res += '@' + val.__id;
+		res += '@' + val.__id.toString(16);
 	}
 	return res;
 }
