@@ -4,13 +4,13 @@ import sys
 import time
 import json
 import pprint
+import httplib
 import inspect
 import logging
 import traceback
 import threading
 import _threading_local
 
-import zmq
 
 
 MAX_STRDUMP=100
@@ -28,11 +28,14 @@ def trace_works():
 	pass
 
 
+# TODO: refactor or remove
 class ZmqClient(object):
 	def __init__(self):
 		pass
 
 	def Connect(self, address):
+		import zmq
+
 		self._context = zmq.Context()
 		self._socket = self._context.socket(zmq.PUB)
 		self._socket.connect(address)
@@ -57,6 +60,40 @@ class ZmqClient(object):
 		if ('__control' in value): dat = '#' + json_val
 		logging.debug('msg {} being sent in overlog.client'.format(dat[:16]))
 		self._socket.send(dat)
+
+
+class HttpClient(object):
+	def Connect(self, address):
+		self.address = address
+		self.host = 'localhost:8111'
+
+		self.reconnect()
+
+		self.SendMessage({
+			'__control': 'set_cwd',
+			'pid': os.getpid(),
+			'cwd': os.getcwdu()
+		})
+
+	def reconnect(self):
+		self.conn = httplib.HTTPConnection(self.host)
+
+	def SendMessage(self, value):
+		json_val = json.dumps(value)
+		dat = json_val
+		if ('__control' in value): dat = '#' + json_val
+		logging.debug('msg {} being sent in overlog.client'.format(dat[:16]))
+
+		for retry in range(3):
+			try:
+				self.conn.request('POST', '/msg/', dat)
+				response = self.conn.getresponse()
+				response.read()
+				return
+
+			except:
+				logging.exception('sending msg')
+				self.reconnect()
 
 
 class FrameDump(object):
@@ -253,7 +290,8 @@ class NewDumper(Dumper):
 
 class Logger(object):
 	def __init__(self):
-		self.rc = ZmqClient()
+		#self.rc = ZmqClient()
+		self.rc = HttpClient()
 		self.rc.Connect("tcp://localhost:5111")
 
 		self.my_thread = threading.current_thread().ident

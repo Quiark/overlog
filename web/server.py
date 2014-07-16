@@ -35,6 +35,15 @@ class NoCacheStaticFileHandler(tornado.web.StaticFileHandler):
 		self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
 
 
+class MsgHandler(tornado.web.RequestHandler):
+	def initialize(self, passer):
+		self.passer = passer
+
+	def post(self):
+		self.passer.on_msg( self.request.body )
+		self.write('OK')
+
+
 class GetSourceHandler(tornado.web.RequestHandler):
 	def initialize(self, passer):
 		self.passer = passer
@@ -68,16 +77,19 @@ class MessagePasser(object):
 	def set_websocket(self, wsock):
 		self.wsock = wsock
 
+	def on_msg(self, msg):
+		logging.debug('zmq recv msg ' + msg[:40])
+		if msg[0] == '#':
+			self.control_message(msg)
+		elif self.wsock:
+			self.wsock.write_message(msg)
+
 	def zmq_recv(self, msgs):
 		if self.wsock == None:
 			logging.error('No WebSocket connected')
 
 		for i in msgs:
-			logging.debug('zmq recv msg ' + i)
-			if i[0] == '#':
-				self.control_message(i)
-			elif self.wsock:
-				self.wsock.write_message(i)
+			self.on_msg(i)
 
 	def control_message(self, msg):
 		js = json.loads(msg[1:])
@@ -103,7 +115,8 @@ def run(port):
 		app = tornado.web.Application([
 			(r'/static/(.*)', NoCacheStaticFileHandler, {'path': os.path.join(os.path.dirname(__file__), "static")}),
 			(r'/WebSockets/', WebSocketHandler, {'passer': passer}),
-			(r'/getsrc/', GetSourceHandler, {'passer': passer})
+			(r'/getsrc/', GetSourceHandler, {'passer': passer}),
+			(r'/msg/', MsgHandler, {'passer': passer})
 		])
 
 		app.listen(port)
@@ -116,6 +129,6 @@ if __name__ == '__main__':
 	parser.add_argument('-v', '--verbose', dest='verbose', action='store', default=40, 
 			help='Log level')
 	args = parser.parse_args()
-	
+
 	logging.basicConfig(level=int(args.verbose))
 	run(8111)
