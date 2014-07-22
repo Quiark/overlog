@@ -27,6 +27,14 @@ def trace_works():
 	'Its here to check if tracing works once enabled.'
 	pass
 
+FILTER_GROUPS = {
+		'nose': ['site-packages/nose'],
+		'py-unittest': ['unittest/main.py', 'unittest/runner.py', 'unittest/loader.py', 'unittest/case.py'],
+		'py': ['genericpath.py', 'sre_parse.py'],
+		'overlog': ['overlog/__init__.py']
+}
+
+SELECTED_GROUPS = ['nose', 'py-unittest', 'overlog', 'py']
 
 # TODO: refactor or remove
 class ZmqClient(object):
@@ -157,7 +165,12 @@ class Dumper(object):
 		if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
 			return [self.convert_obj(x, depth-1) for x in obj]
 		if isinstance(obj, dict):
-			return {self.stringize(k): self.convert_obj(obj[k], depth-1) for k in obj if self.attr_filter(k, obj[k])}
+			try:
+				return {self.stringize(k): self.convert_obj(obj[k], depth-1) for k in obj if self.attr_filter(k, obj[k])}
+			except RuntimeError as e:
+				pprint.pprint(obj)
+				raise
+
 
 		# at this stage we only have custom types
 		dump = getattr(obj, '__dump__', None)
@@ -204,9 +217,9 @@ class Dumper(object):
 				'filename': frame.f_code.co_filename,
 				'lineno': frame.f_lineno}
 
-	def dump_frameobject(self, frame, depth=10):
-		FILTER_FILES = ['unittest/case.py', 'nose/case.py', 'unittest\\case.py', 'nose\\case.py', 'nose/suite.py', 'nose\\suite.py']
-		filtered_out = lambda x: any(x.endswith(f) for f in FILTER_FILES)
+	def dump_frameobject(self, frame, depth=None):
+		depth = depth or 10
+		filtered_out = filter_filename
 
 		fr = frame
 		data = []
@@ -227,6 +240,15 @@ class Dumper(object):
 			count += 1
 
 		return data
+
+def filter_filename(fname):
+	fname = fname.replace('\\', '/')
+	for f in SELECTED_GROUPS:
+		for it in FILTER_GROUPS[f]:
+			if it in fname: return True
+
+	return False
+		
 
 
 class NewDumper(Dumper):
@@ -410,6 +432,7 @@ class Logger(object):
 
 	def exc_tracer(self, frame, event, arg):
 		# this gets invoked for all functions up the call chain
+		# TODO: usually, I wont be interested in all that
 		ret = self.exc_tracer
 		try:
 			if event != 'exception':
@@ -420,6 +443,7 @@ class Logger(object):
 
 			# filter to project filenames
 			if not (self.filter_project in caller['filename']): return ret
+			if filter_filename(caller['filename']): return ret
 
 			exception, evalue, etraceback = arg
 
@@ -447,12 +471,11 @@ class Logger(object):
 	def classy(self, cls):
 		return cls
 
-	def loc(self):
+	def loc(self, depth=None):
 		# let's make it go all the way up the stack trace and collect locals
 		st = inspect.stack() # may also use inspect.trace()
-		data = []
-		for fr in st:
-			data.append( fr[0].f_locals )
+		f = st[0][0]
+		data = NewDumper().dump_frameobject(f, depth)
 
 		self.send_data(data, mode='loc')
 
