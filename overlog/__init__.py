@@ -403,6 +403,9 @@ class Logger(object):
 		self.to_trace.add(self.t_format)
 
 	def trace_function(self, fnlist):
+		if isinstance(fnlist, (str, unicode)):
+			fnlist = [fnlist]
+
 		self.filter_function.update(fnlist)
 		self.to_trace.add(self.t_function)
 
