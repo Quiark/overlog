@@ -12,6 +12,7 @@ import threading
 import _threading_local
 
 
+LOG = logging.getLogger('ovlg')
 
 MAX_STRDUMP=100
 HAS_UTF8 = re.compile(r'[\x80-\xff]')
@@ -30,7 +31,7 @@ def trace_works():
 FILTER_GROUPS = {
 		'nose': ['site-packages/nose'],
 		'py-unittest': ['unittest/main.py', 'unittest/runner.py', 'unittest/loader.py', 'unittest/case.py'],
-		'py': ['genericpath.py', 'sre_parse.py'],
+		'py': ['lib/python2.7'],
 		'overlog': ['overlog/__init__.py']
 }
 
@@ -66,7 +67,7 @@ class ZmqClient(object):
 
 		dat = json_val
 		if ('__control' in value): dat = '#' + json_val
-		logging.debug('msg {} being sent in overlog.client'.format(dat[:16]))
+		LOG.debug('msg {} being sent in overlog.client'.format(dat[:16]))
 		self._socket.send(dat)
 
 
@@ -90,7 +91,7 @@ class HttpClient(object):
 		json_val = json.dumps(value)
 		dat = json_val
 		if ('__control' in value): dat = '#' + json_val
-		logging.debug('msg {} being sent in overlog.client'.format(dat[:16]))
+		LOG.debug('msg {} being sent in overlog.client'.format(dat[:16]))
 
 		for retry in range(3):
 			try:
@@ -100,7 +101,7 @@ class HttpClient(object):
 				return
 
 			except:
-				logging.exception('sending msg')
+				LOG.exception('sending msg')
 				self.reconnect()
 
 
@@ -161,25 +162,29 @@ class Dumper(object):
 
 	def convert_obj_rec(self, obj, depth=4):
 
-		# normal execution - go inside
-		if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
-			return [self.convert_obj(x, depth-1) for x in obj]
-		if isinstance(obj, dict):
-			try:
+		try:
+			# normal execution - go inside
+			if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
+				return [self.convert_obj(x, depth-1) for x in obj]
+			if isinstance(obj, dict):
 				return {self.stringize(k): self.convert_obj(obj[k], depth-1) for k in obj if self.attr_filter(k, obj[k])}
-			except RuntimeError as e:
-				pprint.pprint(obj)
-				raise
+		except:
+			LOG.exception('iterating object')
 
 
 		# at this stage we only have custom types
-		dump = getattr(obj, '__dump__', None)
-		if dump:
-			res = dump()
-		else:
-			res = self.std_dump(obj)
+		try:
+			dump = getattr(obj, '__dump__', None)
+			if dump:
+				res = dump()
+			else:
+				res = self.std_dump(obj)
+			return self.convert_obj(res, depth)
+		except:
+			LOG.exception('trying to call __dump__')
 
-		return self.convert_obj(res, depth)
+		return {}
+
 
 	def stringize(self, x):
 		if isinstance(x, unicode): return x
@@ -248,7 +253,7 @@ def filter_filename(fname):
 			if it in fname: return True
 
 	return False
-		
+
 
 
 class NewDumper(Dumper):
@@ -302,7 +307,7 @@ class NewDumper(Dumper):
 			else:
 				strdata = self.handle_binary(str(obj)[:MAX_STRDUMP])
 		except:
-			logging.warning('Got something of type {} that cant be converted'.format(str(type(obj))))
+			LOG.warning('Got something of type {} that cant be converted'.format(str(type(obj))))
 
 		return {'__seen': True, '__data': strdata}
 
@@ -346,7 +351,7 @@ class Logger(object):
 		try:
 			thr = threading.current_thread()
 			if thr.ident != self.my_thread:
-				logging.warning('Called wrong logger from wrong thread.')
+				LOG.warning('Called wrong logger from wrong thread.')
 				return
 
 			msg = {'time': time.time(),
@@ -368,7 +373,7 @@ class Logger(object):
 
 			self.handle_msg(msg)
 		except Exception as e:
-			logging.exception('in overlog, ignoring')
+			LOG.exception('in overlog, ignoring')
 
 	def hash_caller(self, msg):
 		if not 'caller' in msg: return
@@ -495,7 +500,7 @@ class LogManager(object):
 			res = self.tlocal.logger = Logger()
 			return res
 
-logging.basicConfig(level=0)
+#logging.basicConfig(level=0)
 
 MANAGER = LogManager()
 
