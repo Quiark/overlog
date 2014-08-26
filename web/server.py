@@ -10,11 +10,6 @@ import threading
 import json
 from Queue import Empty
 
-import zmq
-
-from zmq.eventloop import ioloop
-from zmq.eventloop.zmqstream import ZMQStream
-ioloop.install()
 
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -78,18 +73,11 @@ class MessagePasser(object):
 		self.wsock = wsock
 
 	def on_msg(self, msg):
-		logging.debug('zmq recv msg ' + msg[:40])
 		if msg[0] == '#':
 			self.control_message(msg)
 		elif self.wsock:
 			self.wsock.write_message(msg)
 
-	def zmq_recv(self, msgs):
-		if self.wsock == None:
-			logging.error('No WebSocket connected')
-
-		for i in msgs:
-			self.on_msg(i)
 
 	def control_message(self, msg):
 		js = json.loads(msg[1:])
@@ -106,11 +94,6 @@ def run(port):
 
 		passer = MessagePasser()
 
-		socket = zmq.Context.instance().socket(zmq.SUB)
-		socket.bind("tcp://*:5111")
-		socket.setsockopt(zmq.SUBSCRIBE, "")
-		stream = ZMQStream(socket)
-		stream.on_recv(passer.zmq_recv)
 
 		app = tornado.web.Application([
 			(r'/static/(.*)', NoCacheStaticFileHandler, {'path': os.path.join(os.path.dirname(__file__), "static")}),
@@ -126,7 +109,7 @@ def run(port):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Overlog server')
-	parser.add_argument('-v', '--verbose', dest='verbose', action='store', default=40, 
+	parser.add_argument('-v', '--verbose', dest='verbose', action='store', default=40,
 			help='Log level')
 	args = parser.parse_args()
 

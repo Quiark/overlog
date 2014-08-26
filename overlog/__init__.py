@@ -28,47 +28,15 @@ def trace_works():
 	'Its here to check if tracing works once enabled.'
 	pass
 
+# Should be forward slash only and lowercase
 FILTER_GROUPS = {
 		'nose': ['site-packages/nose'],
 		'py-unittest': ['unittest/main.py', 'unittest/runner.py', 'unittest/loader.py', 'unittest/case.py'],
-		'py': ['lib/python2.7'],
+		'py': ['lib/python2.7', 'devel/python/lib', 'build/bdist.'],
 		'overlog': ['overlog/__init__.py']
 }
 
 SELECTED_GROUPS = ['nose', 'py-unittest', 'overlog', 'py']
-
-# TODO: refactor or remove
-class ZmqClient(object):
-	def __init__(self):
-		pass
-
-	def Connect(self, address):
-		import zmq
-
-		self._context = zmq.Context()
-		self._socket = self._context.socket(zmq.PUB)
-		self._socket.connect(address)
-
-		print 'connected, sending control pwd'
-
-		for i in range(3):
-			self.SendMessage({
-						'__control': 'set_cwd',
-						'pid': os.getpid(),
-						'cwd': os.getcwdu()
-			})
-
-	def SendMessage(self, value):
-		if self._socket == None:
-			raise Exception("Attempt to send message without connection.")
-
-		json_val = json.dumps(value)
-		#pprint.pprint(value)
-
-		dat = json_val
-		if ('__control' in value): dat = '#' + json_val
-		LOG.debug('msg {} being sent in overlog.client'.format(dat[:16]))
-		self._socket.send(dat)
 
 
 class HttpClient(object):
@@ -247,7 +215,7 @@ class Dumper(object):
 		return data
 
 def filter_filename(fname):
-	fname = fname.replace('\\', '/')
+	fname = fname.replace('\\', '/').lower()
 	for f in SELECTED_GROUPS:
 		for it in FILTER_GROUPS[f]:
 			if it in fname: return True
@@ -317,7 +285,6 @@ class NewDumper(Dumper):
 
 class Logger(object):
 	def __init__(self):
-		#self.rc = ZmqClient()
 		self.rc = HttpClient()
 		self.rc.Connect("tcp://localhost:5111")
 
