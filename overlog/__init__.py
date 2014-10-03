@@ -190,7 +190,7 @@ class Dumper(object):
 				'filename': frame.f_code.co_filename,
 				'lineno': frame.f_lineno}
 
-	def dump_frameobject(self, frame, depth=None):
+	def dump_frameobject(self, frame, depth=None, skip=0):
 		depth = depth or 10
 		filtered_out = filter_filename
 
@@ -202,6 +202,8 @@ class Dumper(object):
 
 			if filtered_out(filename):
 				data.append(filename + ' filtered out')
+			elif count < skip:
+				data.append(fr.f_code.co_name + ' skipped')
 			else:
 				position = {'pid': os.getpid(),
 							'lineno':fr.f_lineno,
@@ -211,6 +213,7 @@ class Dumper(object):
 
 			fr = fr.f_back
 			count += 1
+
 
 		return data
 
@@ -446,13 +449,14 @@ class Logger(object):
 	def classy(self, cls):
 		return cls
 
-	def loc(self, depth=None):
+	def loc(self, depth=None, skip=0):
 		# let's make it go all the way up the stack trace and collect locals
 		st = inspect.stack() # may also use inspect.trace()
 		f = st[0][0]
-		data = NewDumper().dump_frameobject(f, depth)
+		data = NewDumper().dump_frameobject(f, depth, skip)
+		caller = self.dmp.dump_stackframe(list(st[skip])[1:])
 
-		self.send_data(data, mode='loc')
+		self.send_data(data, mode='loc', caller=caller)
 
 	def exception(self):
 		etype, evalue, etb = sys.exc_info()
@@ -476,5 +480,8 @@ MANAGER = LogManager()
 
 def ovlg():
 	return MANAGER.logger()
+
+def ovlocal(depth=None):
+	return ovlg().loc(depth)
 
 Overlog = ovlg
