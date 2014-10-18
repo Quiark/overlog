@@ -98,6 +98,10 @@ div.msg .data {
 	border: 1px solid #aaa;
 }
 
+div.msg .line {
+    border-bottom: 1px dotted #2A2A2A;
+}
+
 div.msg div.stack span.filename {
 	font-family: monospace;
 }
@@ -113,6 +117,7 @@ div.msg div.stack span.function {
 
 div.data span.value {
 	font-family: Consolas, monospace;
+	margin-left: 1ex;
 }
 
 div.msg div.stack span.line {
@@ -133,7 +138,7 @@ div.msg div.header * {
 }
 
 .button {
-	background-color: #33f;
+	background-color: #35f;
 	color: #ccf;
 	padding: 4px;
 	font-weight: bold;
@@ -177,21 +182,48 @@ div.group {
 }
 
 
-.PID_filter {
+.selectable {
 	border: 1px solid black;
 	width: 10em;
+	cursor: default;
 }
 
-.PID_filter li {
+.selectable li {
 	padding: 4px;
 	list-style-type: none;
 }
 
-.PID_filter li.ui-selecting {
+.selectable li.ui-selecting {
 	background-color: #44f;
 }
 
-.PID_filter li.ui-selected {
+.selectable li.ui-selected {
 	background-color: #24f;
 	color: #99f;
+}
+
+.PID_filter, .mode_filter {
+	float: left;
+}
+
+.rpc_commands {
+	clear: both;
+}
+
+.control_panel {
+	background-color: #cef;
+	border: 1px solid cyan;
+}
+
+.control_panel h2 {
+	margin-bottom: 2px;
+}
+
+.control_panel h2:hover {
+	background-color: #fff;
+	cursor: pointer;
+}
+
+.control_panel .eval_box {
+	font-family: Consolas, monospace;
 }

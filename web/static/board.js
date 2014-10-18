@@ -124,7 +124,8 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 		this.push_parent($line);
 
 		var $collapse = this.span('button').addClass('collapse').text('+');
-		var $name = this.span('name.kd').text(key).css('padding-left', indent * 20 + 'px');
+		var $name = this.span('name.kd').text(key);
+		$line.css('padding-left', indent * 20 + 'px');
 
 		if (typeof(val) != 'object') {
 			var $val = this.span('value.l').text(val);
@@ -213,8 +214,8 @@ Build.prototype.dump_FrameDump = function(indent, obj, $parent, owner, path) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 function rnd_choose(choices) {
-  var index = Math.floor(Math.random() * choices.length);
-  return choices[index];
+	var index = Math.floor(Math.random() * choices.length);
+	return choices[index];
 }
 
 function Stack(builder, $parent) {
@@ -337,6 +338,10 @@ ControlPanel = function($parent, overlog) {
 	this.$grouping = this.b.div('grouping');
 	this.b.push_parent( this.$grouping );
 
+	$('.control_panel h2').click(function(evt) {
+		$('.control_panel .content').slideToggle();
+	});
+
 	$.each(this.overlog.group_recipes, function(ix, elm) {
 		self.b.div('button').text(ix).click(function(evt) {
 			$(this).toggleClass('down');
@@ -345,17 +350,69 @@ ControlPanel = function($parent, overlog) {
 		});
 	});
 
+	// PID filter
 	this.b.pop_parent();
 	this.$pid_filter = this.b.elem('ol', 'PID_filter').addClass('selectable');
 	this.$pid_filter.selectable({
 		stop: function() {
-			var pids = $('.ui-selected', this).map(function(ix, elm) { return $(elm).attr('data-pid'); });
-			self.overlog.set_filter('pid', $.makeArray( pids ));
+			var pids = self.get_selected_items(this, 'data-pid');
+			self.overlog.set_filter('pid', pids );
 			self.refresh();
 		}
 	});
 
+
+	// mode filter
 	this.$mode_filter = this.b.elem('ol', 'mode_filter').addClass('selectable');
+	this.b.push_parent(this.$mode_filter);
+	['data', 'tracer', 'method decorator', 'loc', 'exc_tracer'].every(function(i) {
+		self.b.elem('li').attr('data-mode', i).text(i);
+		return true;
+	});
+	this.b.pop_parent();
+
+	this.$mode_filter.selectable({
+		stop: function() {
+			self.overlog.set_filter('mode', self.get_selected_items(this, 'data-mode'));
+			self.refresh();
+		}
+	});
+
+	// RPC commands
+	this.$rpc_commands = this.b.div('rpc_commands');
+	this.b.push_parent( this.$rpc_commands );
+	this.b.div('button').text('trace exceptions').click(function(evt) {
+		self.send_rpc('trace_except', []);
+	});
+
+	this.$eval_box = this.b.elem('textarea', 'eval_box')
+		.attr('type', 'textarea')
+		.attr('placeholder', 'code to evaluate...')
+		.attr('rows', '4')
+		.attr('cols', 60);
+	this.b.div('button').text('Eval').click(function(evt) {
+		self.send_rpc('do_eval', [self.$eval_box.val()]);
+	});
+
+	this.b.pop_parent();
+}
+
+ControlPanel.prototype.get_selected_items = function($container, attr) {
+	return $.makeArray(
+			$('.ui-selected', $container).map(function(ix, elm) { return $(elm).attr(attr); })
+	);
+}
+
+ControlPanel.prototype.send_rpc = function(method, params) {
+	var pid_selected = this.overlog.state.filters['pid'].selected;
+	if (pid_selected.length == 0) return;
+
+	var obj = {method: method, pid: pid_selected[0], params: params, id: null};
+	jQuery.ajax('/rpc/', {
+		type: 'POST',
+		dataType: 'json',
+		data: JSON.stringify(obj)
+	});
 }
 
 ControlPanel.prototype.refresh = function() {
@@ -420,7 +477,7 @@ OverlogBoard = {
 			$msg.toggleClass('smallmsg');
 		});
 
-		this.control = new ControlPanel($('.control_panel', this.$main.parent()), this);
+		this.control = new ControlPanel($('.control_panel .content', this.$main.parent()), this);
 
 	},
 

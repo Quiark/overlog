@@ -35,8 +35,17 @@ class MsgHandler(tornado.web.RequestHandler):
 		self.passer = passer
 
 	def post(self):
-		self.passer.on_msg( self.request.body )
-		self.write('OK')
+		pid = int(self.get_argument('pid', None))
+		result = self.passer.on_msg( self.request.body, pid ) or ''
+		self.write( result )
+
+
+class RpcHandler(tornado.web.RequestHandler):
+	def initialize(self, passer):
+		self.passer = passer
+
+	def post(self):
+		self.passer.add_rpc( self.request.body )
 
 
 class GetSourceHandler(tornado.web.RequestHandler):
@@ -46,7 +55,6 @@ class GetSourceHandler(tornado.web.RequestHandler):
 	def post(self):
 		CONTEXT = 4
 
-		logging.debug(self.passer.cwd)
 		js = json.loads(self.request.body)
 		fname = os.path.join(self.passer.cwd[ js['pid'] ], js['filename'])
 		lineno = js['lineno']
@@ -68,15 +76,31 @@ class MessagePasser(object):
 	def __init__(self):
 		self.wsock = None
 		self.cwd = {}
+		self.rpc_lists = {}
 
 	def set_websocket(self, wsock):
 		self.wsock = wsock
 
-	def on_msg(self, msg):
+	def on_msg(self, msg, pid=None):
 		if msg[0] == '#':
 			self.control_message(msg)
 		elif self.wsock:
 			self.wsock.write_message(msg)
+
+		try:
+			rpc_text = self.rpc_lists[pid].pop()
+			return rpc_text
+		except:
+			pass
+			#logging.exception('oops')
+
+	def add_rpc(self, body):
+		# thread - unsafe
+		obj = json.loads(body)
+		pid = int(obj['pid'])
+		lst = self.rpc_lists.get(pid, [])
+		lst.append(obj)
+		self.rpc_lists[pid] = lst
 
 
 	def control_message(self, msg):
@@ -99,7 +123,8 @@ def run(port):
 			(r'/static/(.*)', NoCacheStaticFileHandler, {'path': os.path.join(os.path.dirname(__file__), "static")}),
 			(r'/WebSockets/', WebSocketHandler, {'passer': passer}),
 			(r'/getsrc/', GetSourceHandler, {'passer': passer}),
-			(r'/msg/', MsgHandler, {'passer': passer})
+			(r'/msg/', MsgHandler, {'passer': passer}),
+			(r'/rpc/', RpcHandler, {'passer': passer})
 		])
 
 		app.listen(port)

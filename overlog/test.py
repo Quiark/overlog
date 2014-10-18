@@ -4,8 +4,7 @@ import time
 import logging
 
 import overlog
-OLOG = overlog.Overlog()
-OLOG.trace_except()
+OLOG = overlog.ovlg()
 
 
 
@@ -50,6 +49,8 @@ class SomeClass(object):
 TESTDATA = [1, 'abc', u'bcd', SomeClass()]
 
 if __name__ == '__main__':
+	logging.basicConfig(level=0, format='%(levelname)s T%(thread)d:%(threadName)s| %(message)s')
+
 	x = SomeClass()
 	x.method(4)
 	x.test_abc()
@@ -61,6 +62,5 @@ if __name__ == '__main__':
 			x.call_something()
 			x.fact(3)
 		except:
-			OLOG.exception()
-			time.sleep(1)
+			pass
 

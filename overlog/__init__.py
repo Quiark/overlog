@@ -43,6 +43,7 @@ class HttpClient(object):
 	def Connect(self, address):
 		self.address = address
 		self.host = 'localhost:8111'
+		self.enabled = True
 
 		self.reconnect()
 
@@ -55,22 +56,71 @@ class HttpClient(object):
 	def reconnect(self):
 		self.conn = httplib.HTTPConnection(self.host)
 
+	def is_enabled(self):
+		return self.enabled
+
 	def SendMessage(self, value):
+		if not self.enabled: return
+
 		json_val = json.dumps(value)
 		dat = json_val
 		if ('__control' in value): dat = '#' + json_val
-		LOG.debug('msg {} being sent in overlog.client'.format(dat[:16]))
+		#LOG.debug('msg {} being sent in overlog.client'.format(dat[:16]))
 
 		for retry in range(3):
 			try:
-				self.conn.request('POST', '/msg/', dat)
+				self.conn.request('POST', '/msg/?pid={}'.format(os.getpid()), dat)
 				response = self.conn.getresponse()
-				response.read()
+				resp_text = response.read()
+				self.process_response(resp_text)
 				return
 
 			except:
-				LOG.exception('sending msg')
+				LOG.exception('overlog error sending msg')
 				self.reconnect()
+
+	def process_response(self, txt):
+		try:
+			obj = json.loads(txt)
+		except ValueError:
+			return
+		except:
+			logging.exception('in process_response from server: ' + str(txt))
+			return
+
+		try:
+			method = obj['method']
+			params = obj['params']
+			_id = obj['id']
+
+			fn = getattr(RpcHandler, method)
+			result = fn(*params)
+			logging.debug('RPC call {} finished'.format(method))
+
+			# have no way to respond
+		except:
+			logging.exception('in processing RPC call')
+
+
+class RpcHandler(object):
+	@classmethod
+	def trace_except(kls):
+		logger = MANAGER.logger()
+		logger.trace_except()
+
+	@classmethod
+	def test(kls):
+		logger = MANAGER.logger()
+		logger.data('message invoked by RPC')
+
+	@classmethod
+	def test_say(kls):
+		print 'hello world RPC'
+
+	@classmethod
+	def do_eval(kls, code):
+		result = eval(code)
+		MANAGER.logger().data(result)
 
 
 class FrameDump(object):
@@ -303,6 +353,7 @@ class Logger(object):
 
 
 	def data(self, *args, **kwargs):
+		if not self.rc.is_enabled(): return
 		data = self.pack_args(*args, **kwargs)
 		self.send_data(data, mode='data')
 
@@ -396,6 +447,7 @@ class Logger(object):
 		return self.dmp.dump_frameobject(frame)
 
 	def tracer(self, frame, event, arg):
+		if not self.rc.is_enabled(): return
 		if frame.f_code.co_filename == __file__: return
 		res = None
 		for x in self.to_trace:
@@ -437,6 +489,7 @@ class Logger(object):
 	# decorator
 	def method(self, fn):
 		def _internal(_self, *args, **kwargs):
+			if not self.rc.is_enabled(): return
 			data = self.pack_args(*args, **kwargs)
 			caller = self.dmp.dump_function(fn)
 			self.send_data(data, func_name=fn.func_name, caller=caller, mode='method decorator')
@@ -450,6 +503,7 @@ class Logger(object):
 		return cls
 
 	def loc(self, depth=None, skip=0):
+		if not self.rc.is_enabled(): return
 		# let's make it go all the way up the stack trace and collect locals
 		st = inspect.stack() # may also use inspect.trace()
 		f = st[0][0]
@@ -474,7 +528,6 @@ class LogManager(object):
 			res = self.tlocal.logger = Logger()
 			return res
 
-#logging.basicConfig(level=0)
 
 MANAGER = LogManager()
 
