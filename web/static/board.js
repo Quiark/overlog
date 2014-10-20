@@ -1,3 +1,6 @@
+var CHARCODE_A = 97;
+var CHARCODE_D = 101;
+
 SocketClient = {
 	server_name: 'ws:/'+ location.host +'/WebSockets/',
 	reconnectingTimer : undefined,
@@ -241,19 +244,31 @@ Stack.prototype.add_item = function(val) {
 
 	var b = new Build();
 	b.set_parent(this.$choices);
-	var $elem = b.span('button').text(key).attr('data-sel', key);
+	var $elem = b.elem('button', 'button').text(key).attr('data-sel', key);
 	$elem.click(function(evt) {
-		$('.button', self.$choices).removeClass('down');
-		$(this).addClass('down');
 		self.do_switch($(this).attr('data-sel'));
+	});
+	$elem.keypress(function(evt) {
+		var current = parseInt( $(this).attr('data-sel') );
+		if (evt.charCode == CHARCODE_A) self.do_switch(current - 1, null);
+		else if (evt.charCode == CHARCODE_D) self.do_switch(current + 1, null);
 	});
 
 	if (key == 0) {
-		this.do_switch(key);
+		this.do_switch(key, $elem);
 	}
 };
 
-Stack.prototype.do_switch = function(key) {
+Stack.prototype.do_switch = function(key, $elem) {
+	if ((key < 0) || (key >= this.items.length)) return;
+
+	// adjust GUI
+	if ($elem == null) $elem = $('.button[data-sel="'+key+'"]', this.$choices);
+	$('.button', this.$choices).removeClass('down');
+	$elem.addClass('down');
+	$elem.focus();
+
+	// change data
 	var item = this.items[key];
 	this.$container.empty();
 
@@ -261,6 +276,7 @@ Stack.prototype.do_switch = function(key) {
 
 	this.reopen( this.opened, $('.msg .data', this.$container) );
 }
+
 
 Stack.prototype.reopen = function(opened_struct, $container) {
 	for (var k in opened_struct) {
