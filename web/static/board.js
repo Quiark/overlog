@@ -397,20 +397,29 @@ ControlPanel = function($parent, overlog) {
 	// RPC commands
 	this.$rpc_commands = this.b.div('rpc_commands');
 	this.b.push_parent( this.$rpc_commands );
-	this.b.div('button').text('trace exceptions').click(function(evt) {
+
+	this.$rpc_fornew = this.b.span('button.blockize').text('For new processes');
+	this.$rpc_fornew.click(function(evt) {
+		$(this).toggleClass('down');
+	});
+
+	this.b.span('button.blockize').text('Trace exceptions').click(function(evt) {
 		self.send_rpc('trace_except', []);
 	});
 
-	this.$eval_box = this.b.elem('textarea', 'eval_box')
+	var $do_exec_btn = this.b.span('button.blockize').text('Exec');
+	this.b.pop_parent();
+
+	this.$exec_box = this.b.elem('textarea', 'exec_box')
 		.attr('type', 'textarea')
-		.attr('placeholder', 'code to evaluate...')
+		.attr('placeholder', 'code to execuate...')
 		.attr('rows', '4')
 		.attr('cols', 60);
-	this.b.div('button').text('Eval').click(function(evt) {
-		self.send_rpc('do_eval', [self.$eval_box.val()]);
+	
+	$do_exec_btn.click(function(evt) {
+		self.send_rpc('do_exec', [self.$exec_box.val()]);
 	});
 
-	this.b.pop_parent();
 }
 
 ControlPanel.prototype.get_selected_items = function($container, attr) {
@@ -420,10 +429,16 @@ ControlPanel.prototype.get_selected_items = function($container, attr) {
 }
 
 ControlPanel.prototype.send_rpc = function(method, params) {
-	var pid_selected = this.overlog.state.filters['pid'].selected;
-	if (pid_selected.length == 0) return;
+	var pid;
+	if (this.$rpc_fornew.hasClass('down')) {
+		pid = 'new';
+	} else {
+		var pid_selected = this.overlog.state.filters['pid'].selected;
+		if (pid_selected.length == 0) return;
+		pid = pid_selected[0];
+	}
 
-	var obj = {method: method, pid: pid_selected[0], params: params, id: null};
+	var obj = {method: method, pid: pid, params: params, id: null};
 	jQuery.ajax('/rpc/', {
 		type: 'POST',
 		dataType: 'json',

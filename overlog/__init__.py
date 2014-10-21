@@ -81,25 +81,26 @@ class HttpClient(object):
 
 	def process_response(self, txt):
 		try:
-			obj = json.loads(txt)
+			obj_list = json.loads(txt)
 		except ValueError:
 			return
 		except:
 			logging.exception('in process_response from server: ' + str(txt))
 			return
 
-		try:
-			method = obj['method']
-			params = obj['params']
-			_id = obj['id']
+		for obj in obj_list:
+			try:
+				method = obj['method']
+				params = obj['params']
+				_id = obj['id']
 
-			fn = getattr(RpcHandler, method)
-			result = fn(*params)
-			logging.debug('RPC call {} finished'.format(method))
+				fn = getattr(RpcHandler, method)
+				result = fn(*params)
+				logging.debug('RPC call {} finished'.format(method))
 
-			# have no way to respond
-		except:
-			logging.exception('in processing RPC call')
+				# have no way to respond
+			except:
+				logging.exception('in processing RPC call')
 
 
 class RpcHandler(object):
@@ -118,9 +119,8 @@ class RpcHandler(object):
 		print 'hello world RPC'
 
 	@classmethod
-	def do_eval(kls, code):
-		result = eval(code)
-		MANAGER.logger().data(result)
+	def do_exec(kls, code):
+		exec(code)
 
 
 class FrameDump(object):
@@ -477,7 +477,7 @@ class Logger(object):
 
 			exception, evalue, etraceback = arg
 
-			dat = NewDumper().dump_frameobject(frame)
+			dat = NewDumper().dump_frameobject(frame, depth=1)
 			dat.append(evalue)
 			self.send_data(dat, caller=caller, mode='exc_tracer')
 

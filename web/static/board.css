@@ -137,6 +137,10 @@ div.msg div.header * {
 
 }
 
+.blockize {
+	display: block !important;
+}
+
 .button {
 	background-color: #35f;
 	color: #ccf;
@@ -181,6 +185,9 @@ div.group {
 	margin: 2ex;
 }
 
+ol.selectable {
+	margin: 0px;
+}
 
 .selectable {
 	border: 1px solid black;
@@ -207,6 +214,17 @@ div.group {
 }
 
 .rpc_commands {
+	float: left;
+	width: 20em;
+}
+
+.control_panel h2:hover:before {
+	content: "+";
+	margin-right: 1ex;
+	color: gray;
+}
+
+.control_panel:after {
 	clear: both;
 }
 

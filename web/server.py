@@ -35,8 +35,8 @@ class MsgHandler(tornado.web.RequestHandler):
 		self.passer = passer
 
 	def post(self):
-		pid = int(self.get_argument('pid', None))
-		result = self.passer.on_msg( self.request.body, pid ) or ''
+		pid = self.get_argument('pid', None)
+		result = json.dumps( self.passer.on_msg( self.request.body, pid ) or [] )
 		self.write( result )
 
 
@@ -87,17 +87,23 @@ class MessagePasser(object):
 		elif self.wsock:
 			self.wsock.write_message(msg)
 
-		try:
-			rpc_text = self.rpc_lists[pid].pop()
-			return rpc_text
-		except:
-			pass
-			#logging.exception('oops')
+		pid = str(pid)
+		if pid in self.rpc_lists:
+			if len(self.rpc_lists[pid]) > 0:
+				result = self.rpc_lists[pid]
+				self.rpc_lists[pid] = []
+				return result
+
+		elif 'new' in self.rpc_lists:
+			# make sure this process is not 'new' any more
+			self.rpc_lists[pid] = []
+			# send everything but don't delete
+			return self.rpc_lists['new']
 
 	def add_rpc(self, body):
 		# thread - unsafe
 		obj = json.loads(body)
-		pid = int(obj['pid'])
+		pid = str(obj['pid'])
 		lst = self.rpc_lists.get(pid, [])
 		lst.append(obj)
 		self.rpc_lists[pid] = lst
