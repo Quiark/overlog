@@ -5,6 +5,7 @@ import logging
 
 import overlog
 OLOG = overlog.ovlg()
+ovlocal = overlog.ovlocal
 
 
 
@@ -27,11 +28,11 @@ class SomeClass(object):
 
 	def fact(self, n):
 		if (n == 0):
+			ovlocal()
 			raise RuntimeError('ty we')
 			return 1
 		val = n
 		val *= self.fact(n - 1)
-		OLOG.data(val, n)
 		print 'fact', n, val
 		return val
 

@@ -156,6 +156,12 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 				node.expand(true);
 			});
 
+			$line.click(function(evt) {
+				var $sub = $('.collapse', this).data('$sub');
+				var node = $sub.data('node');
+				node.expand(true);
+			});
+
 			$sub.toggle(); // invisible by default
 
 			this.pop_parent();
@@ -202,11 +208,18 @@ Build.prototype.dump_FrameDump = function(indent, obj, $parent, owner, path) {
 	this.push_parent($parent);
 
 	this.span('button').text('src').click(function(evt) {
-		jQuery.post('/getsrc/', JSON.stringify(obj.position), function(data) {
-			self.push_parent($parent);
-			self.elem('pre', 'source').text( data );
-			self.pop_parent();
-		});
+		var $src_btn = $(this);
+		var $source = $('.source', $parent);
+
+		if ($source.length == 0) {
+			jQuery.post('/getsrc/', JSON.stringify(obj.position), function(data) {
+				var $source = $('<pre />').addClass('source').text( data );	
+				$src_btn.after($source);
+			});
+		} else {
+			// just toggle
+			$source.toggle();
+		}
 	});
 
 	this.dumpobj(indent, obj.position, this.div('c'), owner, path);
@@ -504,10 +517,6 @@ OverlogBoard = {
 			OverlogBoard.test();
 		});
 
-		this.active_msg_btn('size_toggle', function($btn, $msg) {
-			$msg.toggleClass('smallmsg');
-		});
-
 		this.control = new ControlPanel($('.control_panel .content', this.$main.parent()), this);
 
 	},
@@ -553,7 +562,6 @@ OverlogBoard = {
 		b.span().text('time: ');
 		b.span('time').text(time.toString());
 		var $tog_stack = b.span('stack_toggle').addClass('button').text('+ stack');
-		b.span('size_toggle').addClass('button').text('+ enlarge');
 		b.pop_parent();
 
 		b.dumpstack(msg.stack, b.div('stack').css('display', 'none'));

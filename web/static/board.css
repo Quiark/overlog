@@ -6,6 +6,10 @@ body {
 pre {font-family: Consolas,monospace}
 pre.messageText {display:inline-block; margin:0px;}
 pre.messageInfo {outline: 1px solid #ccc; padding: 5px; margin: 5px; display:none;margin-bottom: 15px;}
+pre.source {
+	border: 1px solid blue;
+	background-color: #002647;
+}
 .string { color: green; }
 .number { color: darkorange; }
 .boolean { color: blue; }
@@ -161,6 +165,10 @@ div.msg div.header * {
 }
 
 .button:active {
+	border-left: 1px solid #226;
+	border-top: 1px solid #226;
+	border-right: none;
+	border-bottom: none;
 }
 
 .button.disabled {
