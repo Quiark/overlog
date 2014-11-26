@@ -10,6 +10,7 @@ import logging
 import traceback
 import threading
 import _threading_local
+from pprint import pprint
 
 
 LOG = logging.getLogger('ovlg')
@@ -32,7 +33,7 @@ def trace_works():
 FILTER_GROUPS = {
 		'nose': ['site-packages/nose'],
 		'py-unittest': ['unittest/main.py', 'unittest/runner.py', 'unittest/loader.py', 'unittest/case.py'],
-		'py': ['lib/python2.7', 'devel/python/lib', 'build/bdist.'],
+		'py': ['lib/python2.7', 'devel/python/lib', 'build/bdist.', 'site-packages'],
 		'overlog': ['overlog/__init__.py']
 }
 
@@ -135,6 +136,7 @@ class Dumper(object):
 	PRIMITIVES = (int, long, float, str, unicode)
 	DEPTH = 6
 
+
 	def dump(self, obj):
 		self.seen = set()
 		res = self.convert_obj(obj)
@@ -164,6 +166,9 @@ class Dumper(object):
 		# handle binary
 		obj = self.handle_binary(obj)
 
+		# if some people subclass from int... downclass back down
+		if (obj != True) and (obj != False) and isinstance(obj, int): obj = int(obj)
+
 		# primitive objects can be always handled
 		if isinstance(obj, self.PRIMITIVES): return obj
 
@@ -184,6 +189,8 @@ class Dumper(object):
 			# normal execution - go inside
 			if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
 				return [self.convert_obj(x, depth-1) for x in obj]
+			if type(obj).__name__ == 'OrderedDict':
+				obj = dict(obj)
 			if isinstance(obj, dict):
 				return {self.stringize(k): self.convert_obj(obj[k], depth-1) for k in obj if self.attr_filter(k, obj[k])}
 		except:
@@ -351,6 +358,8 @@ class Logger(object):
 		# use when it's not necessary to re-create Dumper
 		self.dmp = NewDumper()
 
+		self.do_pprint = False
+
 
 	def data(self, *args, **kwargs):
 		if not self.rc.is_enabled(): return
@@ -370,6 +379,9 @@ class Logger(object):
 
 	def send_data(self, data, **kwargs):
 		try:
+			if self.do_pprint:
+				pprint(data)
+
 			thr = threading.current_thread()
 			if thr.ident != self.my_thread:
 				LOG.warning('Called wrong logger from wrong thread.')

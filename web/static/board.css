@@ -219,6 +219,8 @@ ol.selectable {
 
 .PID_filter, .mode_filter {
 	float: left;
+	overflow-y: scroll;
+	height: 20ex;
 }
 
 .rpc_commands {

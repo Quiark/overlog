@@ -4,3 +4,15 @@ class Logger(object):
 
 	def method(self, fn):
 		return fn
+
+	def loc(self, *args, **kwargs):
+		pass
+
+	def trace_except(self):
+		pass
+
+def ovlocal(*args, **kwargs):
+	pass
+
+def ovlg():
+	return Logger()

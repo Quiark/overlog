@@ -150,6 +150,7 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 
 			$collapse.data('$sub', $sub);
 			$collapse.click(function(evt) {
+				evt.stopPropagation();
 				var $sub = $(this).data('$sub');
 				var node = $sub.data('node');
 
