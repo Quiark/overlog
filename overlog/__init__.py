@@ -145,7 +145,10 @@ class Dumper(object):
 
 	def handle_binary(self, obj):
 		if isinstance(obj, str) and has_utf8(obj):
-			return '>>' + ByteToHex(obj) + '<<'
+			if len(obj) < MAX_STRDUMP:
+				return '>>' + ByteToHex(obj) + '<<'
+			else:
+				return 'len={}>>{}<<'.format(len(obj), ByteToHex(obj[:MAX_STRDUMP]))
 		return obj
 
 	def print_seen(self, obj):
@@ -514,7 +517,7 @@ class Logger(object):
 	def classy(self, cls):
 		return cls
 
-	def loc(self, depth=None, skip=0):
+	def loc(self, depth=None, skip=1):
 		if not self.rc.is_enabled(): return
 		# let's make it go all the way up the stack trace and collect locals
 		st = inspect.stack() # may also use inspect.trace()
@@ -547,6 +550,6 @@ def ovlg():
 	return MANAGER.logger()
 
 def ovlocal(depth=None):
-	return ovlg().loc(depth)
+	return ovlg().loc(depth, skip=2)
 
 Overlog = ovlg
