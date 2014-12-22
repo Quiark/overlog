@@ -7,6 +7,7 @@ import pprint
 import httplib
 import inspect
 import logging
+import binascii
 import traceback
 import threading
 import _threading_local
@@ -20,15 +21,13 @@ HAS_UTF8 = re.compile(r'[\x80-\xff]')
 
 def has_utf8(s): return HAS_UTF8.search(s) is not None
 
-def ByteToHex( byteStr ):
-	""" Convert a byte string to it's hex string representation e.g. for output.  """
-	return ''.join( [ "%02X" % ord( x ) for x in byteStr ] ).strip()
-
 
 def trace_works():
 	'Its here to check if tracing works once enabled.'
 	pass
 
+# Certain code locations are of no interest to us, typically system libraries, test runner or this library.
+# We group common path patterns and then allow selecting the groups.
 # Should be forward slash only and lowercase
 FILTER_GROUPS = {
 		'nose': ['site-packages/nose'],
@@ -44,6 +43,7 @@ class HttpClient(object):
 	def Connect(self, address):
 		self.address = address
 		self.host = 'localhost:8111'
+		self.rpc_enabled = False
 		self.enabled = True
 
 		self.reconnect()
@@ -51,7 +51,8 @@ class HttpClient(object):
 		self.SendMessage({
 			'__control': 'set_cwd',
 			'pid': os.getpid(),
-			'cwd': os.getcwdu()
+			'cwd': os.getcwdu(),
+			'argv': ' '.join(sys.argv)
 		})
 
 	def reconnect(self):
@@ -76,8 +77,8 @@ class HttpClient(object):
 				self.process_response(resp_text)
 				return
 
-			except:
-				LOG.exception('overlog error sending msg')
+			except Exception as e:
+				LOG.error('overlog error sending msg, error: %s', e)
 				self.reconnect()
 
 	def process_response(self, txt):
@@ -86,9 +87,10 @@ class HttpClient(object):
 		except ValueError:
 			return
 		except:
-			logging.exception('in process_response from server: ' + str(txt))
+			LOG.exception('in process_response from server: ' + str(txt))
 			return
 
+		if not self.rpc_enabled: return
 		for obj in obj_list:
 			try:
 				method = obj['method']
@@ -97,11 +99,11 @@ class HttpClient(object):
 
 				fn = getattr(RpcHandler, method)
 				result = fn(*params)
-				logging.debug('RPC call {} finished'.format(method))
+				LOG.debug('RPC call {} finished'.format(method))
 
 				# have no way to respond
 			except:
-				logging.exception('in processing RPC call')
+				LOG.exception('in processing RPC call')
 
 
 class RpcHandler(object):
@@ -146,9 +148,9 @@ class Dumper(object):
 	def handle_binary(self, obj):
 		if isinstance(obj, str) and has_utf8(obj):
 			if len(obj) < MAX_STRDUMP:
-				return '>>' + ByteToHex(obj) + '<<'
+				return '>>' + binascii.hexlify(obj) + '<<'
 			else:
-				return 'len={}>>{}<<'.format(len(obj), ByteToHex(obj[:MAX_STRDUMP]))
+				return 'len={}>>{}<<'.format(len(obj), binascii.hexlify(obj[:MAX_STRDUMP]))
 		return obj
 
 	def print_seen(self, obj):
@@ -196,8 +198,8 @@ class Dumper(object):
 				obj = dict(obj)
 			if isinstance(obj, dict):
 				return {self.stringize(k): self.convert_obj(obj[k], depth-1) for k in obj if self.attr_filter(k, obj[k])}
-		except:
-			LOG.exception('iterating object')
+		except Exception as e:
+			LOG.error('iterating object, error: %s', e)
 
 
 		# at this stage we only have custom types
@@ -208,8 +210,8 @@ class Dumper(object):
 			else:
 				res = self.std_dump(obj)
 			return self.convert_obj(res, depth)
-		except:
-			LOG.exception('trying to call __dump__')
+		except Exception as e:
+			LOG.error('trying to call __dump__, error: %s', e)
 
 		return {}
 
@@ -379,6 +381,16 @@ class Logger(object):
 
 		return data
 
+	def identity(self, val, desc='identity data', fn=None):
+		if not self.rc.is_enabled(): return
+
+		if fn is not None:
+			to_dump = fn(val)
+		else:
+			to_dump = val
+
+		self.send_data({desc: to_dump}, mode='data')
+		return val
 
 	def send_data(self, data, **kwargs):
 		try:
@@ -409,7 +421,7 @@ class Logger(object):
 
 			self.handle_msg(msg)
 		except Exception as e:
-			LOG.exception('in overlog, ignoring')
+			LOG.error('in overlog, ignoring: %s', e)
 
 	def hash_caller(self, msg):
 		if not 'caller' in msg: return

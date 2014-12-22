@@ -27,18 +27,20 @@ SocketClient = {
 		clearInterval(this.reconnectingTimer);
 	},
 
-	FreezeConsole:function(){
-		$("#FreezeButton").html(this.paused?"Pause":"Run");
-		this.paused = !this.paused;
-	},
-
 	on_message: function(evt) {
-		if (this.paused) return;
+		if (evt.data[0] == '#') {
+			var dat = evt.data.substr(1);
+			var message = JSON.parse(dat);
 
-		var message = JSON.parse(evt.data);
-		OverlogBoard.add_message(message);
-
+			if (message.__control == 'set_cwd') {
+				OverlogBoard.control.set_cwd_ctl(message);
+			}
+		} else {
+			var message = JSON.parse(evt.data);
+			OverlogBoard.add_message(message);
+		}
 	}
+
 };
 
 
@@ -369,7 +371,7 @@ ControlPanel = function($parent, overlog) {
 	this.b.push_parent( this.$grouping );
 
 	$('.control_panel h2').click(function(evt) {
-		$('.control_panel .content').slideToggle();
+		$('.control_panel .content').slideToggle(100);
 	});
 
 	$.each(this.overlog.group_recipes, function(ix, elm) {
@@ -402,7 +404,7 @@ ControlPanel = function($parent, overlog) {
 	this.b.pop_parent();
 
 	this.$mode_filter.selectable({
-		stop: function() {
+		 stop: function() {
 			self.overlog.set_filter('mode', self.get_selected_items(this, 'data-mode'));
 			self.refresh();
 		}
@@ -465,13 +467,25 @@ ControlPanel.prototype.refresh = function() {
 	OverlogBoard.regroup_by(choices);
 }
 
-ControlPanel.prototype.on_msg = function(msg) {
-	var pid = msg.pid;
+ControlPanel.prototype.add_pid = function(pid) {
 	var $found = $('li[data-pid='+pid+']', this.$pid_filter);
 
 	if ($found.length == 0) {
-		$('<li/>').attr('data-pid', pid).text(pid).appendTo(this.$pid_filter);
+		console.log('appending PID');
+		return $('<li/>').attr('data-pid', pid).text(pid).appendTo(this.$pid_filter);
+	} else {
+		return $found;
 	}
+}
+
+ControlPanel.prototype.on_msg = function(msg) {
+	this.add_pid(msg.pid);
+}
+
+ControlPanel.prototype.set_cwd_ctl = function(dat) {
+	console.log('set_cwd_ctl', dat);
+	var $found = this.add_pid(dat.pid);
+	$('<div/>').addClass('subtitle').text(dat.argv).appendTo($found);
 }
 
 

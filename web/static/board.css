@@ -21,6 +21,11 @@ pre.source {
     min-height:30px;
 }
 
+.messages {
+	clear: both;
+	font-family: Consolas, monospace;
+}
+
 .ui-layout-south{
 	color:white;
 	padding: 5px;
@@ -181,6 +186,11 @@ div.msg div.header * {
 	border: none;
 }
 
+.subtitle {
+	font-size: 78%;
+	color: gray;
+}
+
 
 div.msg.smallmsg {
 	overflow: scroll;
@@ -221,6 +231,10 @@ ol.selectable {
 	float: left;
 	overflow-y: scroll;
 	height: 20ex;
+}
+
+.PID_filter {
+	width: 18em;
 }
 
 .rpc_commands {

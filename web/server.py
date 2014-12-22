@@ -76,6 +76,7 @@ class MessagePasser(object):
 	def __init__(self):
 		self.wsock = None
 		self.cwd = {}
+		self.argv = {}
 		self.rpc_lists = {}
 
 	def set_websocket(self, wsock):
@@ -115,7 +116,11 @@ class MessagePasser(object):
 
 		ctl = js['__control']
 		if ctl == 'set_cwd':
-			self.cwd[ js['pid'] ] = js['cwd']
+			pid = js['pid']
+			self.cwd[pid] = js['cwd']
+			self.argv[pid] = js['argv']
+
+			self.wsock.write_message(msg)
 
 
 def run(port):
@@ -123,7 +128,6 @@ def run(port):
 		logging.info('Running web server on port {}'.format(port))
 
 		passer = MessagePasser()
-
 
 		app = tornado.web.Application([
 			(r'/static/(.*)', NoCacheStaticFileHandler, {'path': os.path.join(os.path.dirname(__file__), "static")}),
@@ -133,7 +137,7 @@ def run(port):
 			(r'/rpc/', RpcHandler, {'passer': passer})
 		])
 
-		app.listen(port)
+		app.listen(port, '127.0.0.1')
 		tornado.ioloop.IOLoop.instance().start()
 	except:
 		logging.exception('in main loop')
