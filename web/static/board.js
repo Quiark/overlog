@@ -128,13 +128,14 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 		var $line = this.div('line').attr('data-key', key);
 		this.push_parent($line);
 
-		var $collapse = this.span('button').addClass('collapse').text('+');
+		var $collapse = this.span(); //'button').addClass('collapse').text('+');
 		var $name = this.span('name.kd').text(key);
 		$line.css('padding-left', indent * 20 + 'px');
 
 		if (typeof(val) != 'object') {
 			var $val = this.span('value.l').text(val);
-			$collapse.text(' ').addClass('disabled');
+			//$collapse.text(' ').addClass('disabled');
+			$collapse.addClass('indent').text(' ');
 			this.pop_parent();
 
 		} else {
@@ -150,6 +151,7 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 			$sub.data('val-expanded', false);
 			this.push_parent($sub);
 
+			$collapse.addClass('button').addClass('collapse').text('+');
 			$collapse.data('$sub', $sub);
 			$collapse.click(function(evt) {
 				evt.stopPropagation();
@@ -367,6 +369,7 @@ ControlPanel = function($parent, overlog) {
 
 	this.b = new Build();
 	this.b.push_parent(this.$parent);
+	this.b.span().text('Group by:');
 	this.$grouping = this.b.div('grouping');
 	this.b.push_parent( this.$grouping );
 

@@ -71,6 +71,10 @@ class GetSourceHandler(tornado.web.RequestHandler):
 		self.write(''.join(dat))
 
 
+class IndexHandler(tornado.web.RequestHandler):
+	def get(self):
+		self.redirect('/static/board.html')
+
 
 class MessagePasser(object):
 	def __init__(self):
@@ -134,7 +138,8 @@ def run(port):
 			(r'/WebSockets/', WebSocketHandler, {'passer': passer}),
 			(r'/getsrc/', GetSourceHandler, {'passer': passer}),
 			(r'/msg/', MsgHandler, {'passer': passer}),
-			(r'/rpc/', RpcHandler, {'passer': passer})
+			(r'/rpc/', RpcHandler, {'passer': passer}),
+			(r'/', IndexHandler )
 		])
 
 		app.listen(port, '127.0.0.1')

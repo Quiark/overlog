@@ -16,6 +16,7 @@ the Python library. Even with these restrictions, I find it useful.
 The HTML+JS data browser has some filtering and grouping capabilities, can filter dumps
 from different processes based on PID, group dumps by thread, enclosing stack frame or
 
+![screenshot](https://raw.githubusercontent.com/Quiark/Overlog/master/doc/screenshot.png)
 
 
 Use cases
@@ -29,6 +30,32 @@ Use cases
 3. Keeping track of values between different test runs.
 
 
+
+Making use of Overlog
+---------------------
+
+1. Install using your favourite package manager: `pip install overlog`
+2. Run the web server: `python web/server.py`
+3. Open `http://localhost:8111/` in your browser
+3. In your code:
+
+```
+from overlog import ovlg, ovlocal
+
+# now somewhere in your code:
+def my_computation(rabbits, wolves):
+	new_rabbits -= 2*wolves
+	grass = 100 - 3*new_rabbits
+
+	ovlocal()
+	# ^ this dumps the current stack frame which includes the variables rabbits, wolves, new_rabbits and grass
+	#   and also dumps a few stack frames up the call stack
+
+```
+4. Switch to the browser and explore your object dump there.
+
+
+
 Architecture
 ------------
 
@@ -37,6 +64,7 @@ is invoked, it creates a JSON representation of the object(s) of interest and se
 them using standard HTTP to a Python Tornado server running in the background which
 in turn, is connected to the browser via WebSockets. The browser receives objects in
 JSON and displays them on the page.
+
 
 Useful tips
 -----------
@@ -56,6 +84,11 @@ except:
 ```
 
 and then you don't ever need to import overlog again!
+
+### Auto-start web server
+
+I actually like to auto-run the overlog server after system boot so it's always ready
+to use.
 
 
 Credits & licensing
