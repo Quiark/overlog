@@ -18,6 +18,8 @@ from different processes based on PID, group dumps by thread, enclosing stack fr
 
 ![screenshot](https://raw.githubusercontent.com/Quiark/Overlog/master/doc/screenshot.png)
 
+The code is a bit messy, sometimes downright unmaintainable. Sorry for that, it was written
+in a rush :)
 
 Use cases
 ---------

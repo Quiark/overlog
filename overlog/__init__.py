@@ -153,6 +153,14 @@ class Dumper(object):
 				return 'len={}>>{}<<'.format(len(obj), binascii.hexlify(obj[:MAX_STRDUMP]))
 		return obj
 
+	def handle_string(self, obj):
+		if isinstance(obj, str):
+			return "'" + obj + "'"
+		elif isinstance(obj, unicode):
+			return u"u'" + obj + u"'"
+		else:
+			return obj
+
 	def print_seen(self, obj):
 		try:
 			return u'<object "{}" already seen before>'.format(unicode(
@@ -175,7 +183,8 @@ class Dumper(object):
 		if (obj != True) and (obj != False) and isinstance(obj, int): obj = int(obj)
 
 		# primitive objects can be always handled
-		if isinstance(obj, self.PRIMITIVES): return obj
+		if isinstance(obj, self.PRIMITIVES):
+			return self.handle_string(obj)
 
 		# if seen, skip
 		if id(obj) in self.seen:
@@ -345,7 +354,7 @@ class NewDumper(Dumper):
 		return {'__seen': True, '__data': strdata}
 
 	def print_toodeep(self, obj, depth):
-		return {'__err': 'too_deep'}
+		return {'__err': 'too_deep', '__data': str(obj)}
 
 
 class Logger(object):
