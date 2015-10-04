@@ -3,3 +3,4 @@ attic/
 *.swp
 *.pyc
 colors/
+build/

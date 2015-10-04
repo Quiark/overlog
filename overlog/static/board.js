@@ -413,6 +413,15 @@ ControlPanel = function($parent, overlog) {
 		}
 	});
 
+	// tags filter
+	this.$tags_filter = this.b.elem('ol', 'tags_filter').addClass('selectable');
+	this.b.push_parent(this.$tags_filter);
+	this.b.pop_parent();
+
+	this.$tags_filter.selectable({
+
+	});
+
 	// RPC commands
 	this.$rpc_commands = this.b.div('rpc_commands');
 	this.b.push_parent( this.$rpc_commands );

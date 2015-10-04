@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+include overlog/static/board.*
+include overlog/static/fruity.css
+include overlog/static/vendor/jquery/jquery-2.0.3.min.js
+include overlog/static/vendor/jquery/jquery-ui-1.10.4.custom.min.js
