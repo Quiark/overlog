@@ -4,7 +4,7 @@ import sys
 import time
 import json
 import pprint
-import httplib
+import http.client
 import inspect
 import logging
 import binascii
@@ -32,7 +32,7 @@ def trace_works():
 FILTER_GROUPS = {
 		'nose': ['site-packages/nose'],
 		'py-unittest': ['unittest/main.py', 'unittest/runner.py', 'unittest/loader.py', 'unittest/case.py'],
-		'py': ['lib/python2.7', 'devel/python/lib', 'build/bdist.', 'site-packages'],
+		'py': ['lib/python3.', 'devel/python/lib', 'build/bdist.', 'site-packages'],
 		'overlog': ['overlog/__init__.py']
 }
 
@@ -51,12 +51,12 @@ class HttpClient(object):
 		self.SendMessage({
 			'__control': 'set_cwd',
 			'pid': os.getpid(),
-			'cwd': os.getcwdu(),
+			'cwd': os.getcwd(),
 			'argv': ' '.join(sys.argv)
 		})
 
 	def reconnect(self):
-		self.conn = httplib.HTTPConnection(self.host)
+		self.conn = http.client.HTTPConnection(self.host)
 
 	def is_enabled(self):
 		return self.enabled
@@ -119,7 +119,7 @@ class RpcHandler(object):
 
 	@classmethod
 	def test_say(kls):
-		print 'hello world RPC'
+		print('hello world RPC')
 
 	@classmethod
 	def do_exec(kls, code):
@@ -135,7 +135,7 @@ class FrameDump(object):
 class Dumper(object):
 	'Converts any Python thing into a JSON-compatible object'
 
-	PRIMITIVES = (int, long, float, str, unicode)
+	PRIMITIVES = (int, float, str, bytes)
 	DEPTH = 6
 
 
@@ -156,14 +156,14 @@ class Dumper(object):
 	def handle_string(self, obj):
 		if isinstance(obj, str):
 			return "'" + obj + "'"
-		elif isinstance(obj, unicode):
-			return u"u'" + obj + u"'"
+		elif isinstance(obj, bytes):
+			return "b'" + obj.decode() + "'"
 		else:
 			return obj
 
 	def print_seen(self, obj):
 		try:
-			return u'<object "{}" already seen before>'.format(unicode(
+			return u'<object "{}" already seen before>'.format((
 				self.handle_binary(obj))[:MAX_STRDUMP])
 		except:
 			# got some weird ctypes object here that can't handle repr
@@ -198,7 +198,6 @@ class Dumper(object):
 		return self.convert_obj_rec(obj, depth)
 
 	def convert_obj_rec(self, obj, depth=4):
-
 		try:
 			# normal execution - go inside
 			if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
@@ -208,7 +207,7 @@ class Dumper(object):
 			if isinstance(obj, dict):
 				return {self.stringize(k): self.convert_obj(obj[k], depth-1) for k in obj if self.attr_filter(k, obj[k])}
 		except Exception as e:
-			LOG.error('iterating object, error: %s', e)
+			LOG.error('iterating object, error: %s', traceback.format_exc())
 
 
 		# at this stage we only have custom types
@@ -220,15 +219,14 @@ class Dumper(object):
 				res = self.std_dump(obj)
 			return self.convert_obj(res, depth)
 		except Exception as e:
-			LOG.error('trying to call __dump__, error: %s', e)
+			LOG.error('trying to call __dump__, error: %s', traceback.format_exc())
 
 		return {}
 
 
 	def stringize(self, x):
-		if isinstance(x, unicode): return x
-		elif isinstance(x, str): return x
-		else: return unicode(x)
+		if isinstance(x, str): return x
+		else: return str(x)
 
 	def std_dump(self, obj):
 		result = {}
@@ -241,7 +239,7 @@ class Dumper(object):
 	def attr_filter(self, k, v):
 		if inspect.ismodule(v) or inspect.ismethod(v) or inspect.isfunction(v): return False
 		if inspect.isgenerator(v) or inspect.isbuiltin(v) or inspect.isroutine(v): return False
-		if isinstance(k, (str, unicode)):
+		if isinstance(k, str):
 			if k.startswith('__') and k.endswith('__'): return False
 		return True
 
@@ -342,9 +340,9 @@ class NewDumper(Dumper):
 		if obj in ['', None, [], (), {}, set()]: return obj
 		strdata = ''
 		try:
-			if isinstance(obj, str):
+			if isinstance(obj, bytes):
 				strdata = self.handle_binary(str)
-			elif isinstance(obj, unicode):
+			elif isinstance(obj, str):
 				strdata = str
 			else:
 				strdata = self.handle_binary(str(obj)[:MAX_STRDUMP])
@@ -413,7 +411,7 @@ class Logger(object):
 
 			msg = {'time': time.time(),
 				'pid': os.getpid(),
-				'stack': self.filter_stack( traceback.extract_stack() ),
+				'stack': [self.convert_frame(x) for x in self.filter_stack( traceback.extract_stack() )],
 				'data': NewDumper().dump(data),
 				'thread': {
 					'id': thr.ident,
@@ -430,7 +428,7 @@ class Logger(object):
 
 			self.handle_msg(msg)
 		except Exception as e:
-			LOG.error('in overlog, ignoring: %s', e)
+			LOG.error('in overlog, ignoring: %s', traceback.format_exc())
 
 	def hash_caller(self, msg):
 		if not 'caller' in msg: return
@@ -438,6 +436,9 @@ class Logger(object):
 		msg['caller']['hash'] = hash((msg['caller']['name'],
 									msg['caller']['filename'],
 									msg['caller']['lineno']))
+
+	def convert_frame(self, frame):
+		return (frame.filename, frame.lineno, frame.name, frame.line)
 
 	def filter_stack(self, stack):
 		def is_overlog(fname, lineno, function, codeline):
@@ -460,7 +461,7 @@ class Logger(object):
 		self.to_trace.add(self.t_format)
 
 	def trace_function(self, fnlist):
-		if isinstance(fnlist, (str, unicode)):
+		if isinstance(fnlist, str):
 			fnlist = [fnlist]
 
 		self.filter_function.update(fnlist)
@@ -472,7 +473,7 @@ class Logger(object):
 		sys.settrace(self.exc_tracer)
 
 	def t_format(self, frame, event, arg):
-		if event != 'c_call' or arg.__name__ != 'format' or not isinstance(arg.__self__, (str, unicode)):
+		if event != 'c_call' or arg.__name__ != 'format' or not isinstance(arg.__self__, str):
 			return False
 		return frame.f_locals
 
@@ -518,7 +519,7 @@ class Logger(object):
 			self.send_data(dat, caller=caller, mode='exc_tracer')
 
 		except Exception as e:
-			print 'exception ', e
+			print('exception ', e)
 		return ret
 
 

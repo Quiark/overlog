@@ -8,7 +8,7 @@ import tornado.websocket
 from threading import Thread
 import threading
 import json
-from Queue import Empty
+from queue import Empty
 
 
 
@@ -18,7 +18,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 		self.passer.set_websocket(self)
 
 	def open(self, *args):
-		self.stream.set_nodelay(True)
+		self.set_nodelay(True)
 
 	def on_close(self):
 		pass
