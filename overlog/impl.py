@@ -13,11 +13,15 @@ import threading
 import _threading_local
 from pprint import pprint
 
+from .noop import Logger as NoopLogger
 
 LOG = logging.getLogger('ovlg')
 
 MAX_STRDUMP=100
 HAS_UTF8 = re.compile(r'[\x80-\xff]')
+
+def is_disabled():
+	return os.getenv("OVERLOG_DISABLE", 0) in [1, 'true', 'True']
 
 def has_utf8(s): return HAS_UTF8.search(s) is not None
 
@@ -569,9 +573,11 @@ class LogManager(object):
 MANAGER = LogManager()
 
 def ovlg():
+	if is_disabled(): return NoopLogger()
 	return MANAGER.logger()
 
 def ovlocal(depth=None):
+	if is_disabled(): pass
 	return ovlg().loc(depth, skip=2)
 
 Overlog = ovlg
