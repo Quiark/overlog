@@ -4,3 +4,4 @@ attic/
 *.pyc
 colors/
 build/
+.aider*
