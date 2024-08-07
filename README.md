@@ -36,8 +36,12 @@ Use cases
 Making use of Overlog
 ---------------------
 
-1. Install using your favourite package manager: `pip install overlog`
-2. Run the web server: `python web/server.py`
+(don't need to clone the repo first)
+
+1. Create a virtualenv for overlog: `python3 -m venv ovenv`
+2. Activate the env: `source ovenv/bin/activate`
+3. Install the package: `pip install git+https://github.com/quiark/overlog.git#egg=overlog`
+2. Run the web server: `python ovenv/lib/python3.11/site-packages/overlog/server.py`
 3. Open `http://localhost:8111/` in your browser
 3. In your code:
 
