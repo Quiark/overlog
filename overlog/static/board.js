@@ -1,6 +1,10 @@
 var CHARCODE_A = 97;
 var CHARCODE_D = 101;
 
+/* TODO
+	* grouping by custom path
+*/
+
 SocketClient = {
 	server_name: 'ws:/'+ location.host +'/WebSockets/',
 	reconnectingTimer : undefined,
@@ -43,6 +47,24 @@ SocketClient = {
 
 };
 
+function simkey() {
+	var keyboardEvent = document.createEvent('KeyboardEvent');
+	var initMethod = typeof keyboardEvent.initKeyboardEvent !== 'undefined' ? 'initKeyboardEvent' : 'initKeyEvent';
+
+	keyboardEvent[initMethod](
+		'keydown', // event type: keydown, keyup, keypress
+		true, // bubbles
+		true, // cancelable
+		window, // view: should be window
+		false, // ctrlKey
+		false, // altKey
+		false, // shiftKey
+		false, // metaKey
+		9, // keyCode: unsigned long - the virtual key code, else 0
+		0, // charCode: unsigned long - the Unicode character associated with the depressed key, else 0
+	);
+	document.dispatchEvent(keyboardEvent);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -125,14 +147,14 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 	for (var key in obj) {
 		var val = obj[key];
 
-		var $line = this.div('line').attr('data-key', key);
+		var $line = this.div('line').attr('data-key', key).attr('tabindex', 0);
 		this.push_parent($line);
 
 		var $collapse = this.span(); //'button').addClass('collapse').text('+');
 		var $name = this.span('name.kd').text(key);
 		$line.css('padding-left', indent * 20 + 'px');
 
-		if (typeof(val) != 'object') {
+		if ((val != null) && (typeof(val) != 'object')) {
 			var $val = this.span('value.l').text(val);
 			//$collapse.text(' ').addClass('disabled');
 			$collapse.addClass('indent').text(' ');
@@ -144,7 +166,7 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 			this.pop_parent();
 
 			// nested value is next div
-			var $sub = this.div('nested').attr('data-key', key);
+			var $sub = this.div('nested').attr('data-key', key)
 			var full_path = path.concat([key]);
 			var node = new DumpNode(key, val, owner, $sub, indent, full_path, self, $collapse);
 			$sub.data('node', node);
@@ -161,10 +183,18 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 				node.expand(true);
 			});
 
-			$line.click(function(evt) {
+			var lineClickFn = function(evt) {
 				var $sub = $('.collapse', this).data('$sub');
 				var node = $sub.data('node');
 				node.expand(true);
+			};
+			$line.click(lineClickFn);
+			$line.keydown(function(evt) {
+				if (evt.key == ' ') {
+					lineClickFn.call(this, evt);
+				} else if (evt.key == 'j') {
+					simkey()
+				}
 			});
 
 			$sub.toggle(); // invisible by default
@@ -178,6 +208,9 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 
 
 Build.prototype.print_object_summary = function(val) {
+	if (val == null) return 'Null';
+	if (val?.length === 0) return '[]';
+	if (Object.keys(val)?.length === 0) return '{}';
 	var res = '[...]';
 	if (val && val.__class) {
 		res += ' is ' + val.__class;
@@ -588,6 +621,8 @@ OverlogBoard = {
 		b.span('mode').text(msg.mode);
 		b.span().text('time: ');
 		b.span('time').text(time.toString());
+		b.span().text('counter: ');
+		b.span('counter').text(msg.counter);
 		var $tog_stack = b.span('stack_toggle').addClass('button').text('+ stack');
 		b.pop_parent();
 
@@ -695,6 +730,9 @@ OverlogBoard = {
 		var self = this;
 
 		this.clear();
+		this.all_data.sort((a, b) => {
+			return (a.count ?? 0) - (b.count ?? 0);
+		})
 		$.each(this.all_data, function(ix, elm) {
 			self.add_by_group(elm);
 		});

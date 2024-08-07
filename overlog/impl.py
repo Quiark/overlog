@@ -359,6 +359,9 @@ class NewDumper(Dumper):
 		return {'__err': 'too_deep', '__data': str(obj)}
 
 
+# may not work well in multithreaded
+counter = 0
+
 class Logger(object):
 	def __init__(self):
 		self.rc = HttpClient()
@@ -413,7 +416,9 @@ class Logger(object):
 				LOG.warning('Called wrong logger from wrong thread.')
 				return
 
+			counter += 1
 			msg = {'time': time.time(),
+				'counter': counter,
 				'pid': os.getpid(),
 				'stack': [self.convert_frame(x) for x in self.filter_stack( traceback.extract_stack() )],
 				'data': NewDumper().dump(data),
@@ -424,7 +429,7 @@ class Logger(object):
 			}
 			msg.update(kwargs)
 
-			if not ('caller' in kwargs):
+			if not ('caller' in kwargs) and len(msg['stack']) > 0:
 				msg['caller'] = self.dmp.dump_stackframe(msg['stack'][-1])
 
 			# add hash for caller
