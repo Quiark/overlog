@@ -303,3 +303,8 @@ ol.selectable {
 .control_panel .eval_box {
 	font-family: Consolas, monospace;
 }
+
+.control_panel .custom-path-input {
+	font-family: Consolas, monospace;
+	width: 20em;
+}

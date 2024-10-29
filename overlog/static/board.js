@@ -418,6 +418,12 @@ ControlPanel = function($parent, overlog) {
 		});
 	});
 
+
+	this.$customPathInput = this.b.elem('input', 'custom-path-input')
+		.attr('type', 'text')
+		.attr('placeholder', 'Enter custom path')
+		.addClass('custom-path-input')
+
 	// PID filter
 	this.b.pop_parent();
 	this.$pid_filter = this.b.elem('ol', 'PID_filter').addClass('selectable');
@@ -509,6 +515,7 @@ ControlPanel.prototype.send_rpc = function(method, params) {
 
 ControlPanel.prototype.refresh = function() {
 	var choices = $('.button.down', this.$grouping).map(function(ix, elm) {return $(elm).text(); });
+	OverlogBoard.customPath = $('.custom-path-input').val();
 	OverlogBoard.regroup_by(choices);
 }
 
@@ -557,7 +564,12 @@ OverlogBoard = {
 				keyfn: function(val) { return val.thread.id; },
 				elm_attr: 'data-thread',
 				headfn: function(val, $header) { $header.text('thread: ' + val.thread.name); }
-			}
+			},
+			custom: {
+                keyfn: function(val) { return _.get(val.data, OverlogBoard.customPath); },
+                elm_attr: 'data-custom',
+                headfn: function(val, $header) { $header.text(OverlogBoard.customPath?.toString() + ': ' + _.get(val.data, OverlogBoard.customPath)); }
+            }
 		};
 
 		this.state = {
