@@ -3,6 +3,7 @@ var CHARCODE_D = 101;
 
 /* TODO
 	* grouping by custom path
+	* button to pin selected objects to separate dashboard
 */
 
 SocketClient = {
