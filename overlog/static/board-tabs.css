@@ -1,0 +1,51 @@
+.tab-switcher {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #f0f0f0;
+    padding: 10px;
+    z-index: 1000;
+    border-bottom: 1px solid #ccc;
+}
+
+.tab-button {
+    padding: 8px 16px;
+    margin-right: 5px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+}
+
+.tab-button.active {
+    background: #007bff;
+    color: white;
+    border-color: #0056b3;
+}
+
+#tab-content {
+    margin-top: 50px; /* Space for fixed tab switcher */
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+.whiteboard-container {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+}
+
+#whiteboard {
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}

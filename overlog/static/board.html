@@ -4,6 +4,7 @@
 	<meta charset="utf-8">
 
 	<link rel="stylesheet" href="board.css" />
+	<link rel="stylesheet" href="board-tabs.css" />
 	<link rel="stylesheet" href="fruity.css" />
 	<title>OVERLOG</title>
 
@@ -13,7 +14,13 @@
 	<script src="board.js"></script>
 </head>
 <body>
-	<div class="control_panel">
+	<div class="tab-switcher">
+		<button class="tab-button active" data-tab="main">Main View</button>
+		<button class="tab-button" data-tab="whiteboard">Whiteboard</button>
+	</div>
+	<div id="tab-content">
+		<div class="tab-pane active" id="main-view">
+			<div class="control_panel">
 		<h2>Control Panel</h2>
 		<div class="content">
 			<div class="" id="bottom-information-panel">  
@@ -23,5 +30,12 @@
 		<div style="clear:both">&nbsp;</div>
 	</div>
 	<div id="messages"></div>
+		</div>
+		<div class="tab-pane" id="whiteboard-view">
+			<div class="whiteboard-container">
+				<canvas id="whiteboard"></canvas>
+			</div>
+		</div>
+	</div>
 </body>
 </html>

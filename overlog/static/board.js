@@ -761,7 +761,70 @@ OverlogBoard = {
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
+// Tab switching functionality
+function initTabs() {
+    $('.tab-button').click(function() {
+        $('.tab-button').removeClass('active');
+        $('.tab-pane').removeClass('active');
+        
+        $(this).addClass('active');
+        const tabId = $(this).data('tab');
+        
+        if (tabId === 'main') {
+            $('#main-view').addClass('active');
+        } else if (tabId === 'whiteboard') {
+            $('#whiteboard-view').addClass('active');
+            initWhiteboard();
+        }
+    });
+}
+
+// Basic whiteboard functionality
+function initWhiteboard() {
+    const canvas = document.getElementById('whiteboard');
+    if (!canvas.initialized) {
+        canvas.initialized = true;
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        let drawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        function startDrawing(e) {
+            drawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        }
+
+        function stopDrawing() {
+            drawing = false;
+        }
+    }
+}
+
 $(document).ready(function() {
-	OverlogBoard.init($('#messages'));
-	SocketClient.Connect();
+    OverlogBoard.init($('#messages'));
+    SocketClient.Connect();
+    initTabs();
 });
