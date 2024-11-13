@@ -48,4 +48,7 @@
     width: 100%;
     height: 100%;
     cursor: crosshair;
+    background-image: radial-gradient(circle, #000000 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: -10px -10px;
 }
