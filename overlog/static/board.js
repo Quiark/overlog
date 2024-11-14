@@ -155,15 +155,32 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 		var $name = this.span('name.kd').text(key);
 		$line.css('padding-left', indent * 20 + 'px');
 
+		var stickFn = function(evt) {
+			evt.stopPropagation();
+			var $sub = $(this).data('$sub');
+			var node = $sub.data('node');
+			console.log(node.val)
+		}
+
 		if ((val != null) && (typeof(val) != 'object')) {
 			var $val = this.span('value.l').text(val);
 			//$collapse.text(' ').addClass('disabled');
 			$collapse.addClass('indent').text(' ');
+			//var $stick = this.span('stick').addClass('button').text('+');
+			//$stick.click(stickFn);
 			this.pop_parent();
 
 		} else {
 			// just a simple text
 			var $val = this.span('value.kt').text(self.print_object_summary(val));
+			var $stick = this.span('stick').addClass('button').text('+');
+			$stick.click(function(evt) {
+				evt.stopPropagation();
+				var $sub = $(this).data('$sub');
+				var node = $sub.data('node');
+				console.log(node.val)
+			}
+			);
 			this.pop_parent();
 
 			// nested value is next div
@@ -172,6 +189,7 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 			var node = new DumpNode(key, val, owner, $sub, indent, full_path, self, $collapse);
 			$sub.data('node', node);
 			$sub.data('val-expanded', false);
+			$stick.data('$sub', $sub);
 			this.push_parent($sub);
 
 			$collapse.addClass('button').addClass('collapse').text('+');
@@ -637,6 +655,7 @@ OverlogBoard = {
 		b.span().text('counter: ');
 		b.span('counter').text(msg.counter);
 		var $tog_stack = b.span('stack_toggle').addClass('button').text('+ stack');
+		//var $stick = b.span('stick').addClass('button').text('[+]');
 		b.pop_parent();
 
 		b.dumpstack(msg.stack, b.div('stack').css('display', 'none'));
