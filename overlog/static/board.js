@@ -155,13 +155,6 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 		var $name = this.span('name.kd').text(key);
 		$line.css('padding-left', indent * 20 + 'px');
 
-		var stickFn = function(evt) {
-			evt.stopPropagation();
-			var $sub = $(this).data('$sub');
-			var node = $sub.data('node');
-			console.log(node.val)
-		}
-
 		if ((val != null) && (typeof(val) != 'object')) {
 			var $val = this.span('value.l').text(val);
 			//$collapse.text(' ').addClass('disabled');
@@ -179,6 +172,12 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 				var $sub = $(this).data('$sub');
 				var node = $sub.data('node');
 				console.log(node.val)
+				var box = $(addWhiteboardBox());
+				OverlogBoard.build_message({}, {
+					stack: [],
+					data: node.val
+				}, box)
+				box.get(0).scrollIntoView()
 			}
 			);
 			this.pop_parent();
@@ -360,6 +359,7 @@ Stack.prototype.reopen = function(opened_struct, $container) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 function DumpNode(key, val, owner, $sub, indent, full_path, build, $collapse) {
+	if (owner == null) console.warn('DumpNode: owner is null');
 	this.key = key;
 	this.val = val;
 	this.owner = owner;
@@ -644,16 +644,18 @@ OverlogBoard = {
 		b.push_parent($msg);
 
 		b.push_parent( b.div('header') );
-		b.span().text('PID: ');
-		b.span('pid').text(msg.pid);
-		b.span().text('THR: ');
-		b.span('thr').text(msg.thread.name);
-		b.span().text('mode: ');
-		b.span('mode').text(msg.mode);
-		b.span().text('time: ');
-		b.span('time').text(time.toString());
-		b.span().text('counter: ');
-		b.span('counter').text(msg.counter);
+		if (msg.pid || msg.thread || msg.time) {
+			b.span().text('PID: ');
+			b.span('pid').text(msg.pid);
+			b.span().text('THR: ');
+			b.span('thr').text(msg.thread.name);
+			b.span().text('mode: ');
+			b.span('mode').text(msg.mode);
+			b.span().text('time: ');
+			b.span('time').text(time.toString());
+			b.span().text('counter: ');
+			b.span('counter').text(msg.counter);
+		}
 		var $tog_stack = b.span('stack_toggle').addClass('button').text('+ stack');
 		//var $stick = b.span('stick').addClass('button').text('[+]');
 		b.pop_parent();
@@ -855,8 +857,13 @@ function initWhiteboard() {
                 let startY = e.clientY - box.offsetTop;
                 
                 function moveBox(e) {
-                    box.style.left = (e.clientX - startX) + 'px';
-                    box.style.top = (e.clientY - startY) + 'px';
+					const step = 32
+					let l = (e.clientX - startX)
+					l -= l % step
+					let t = (e.clientY - startY)
+					t -= t % step
+                    box.style.left = l + 'px';
+                    box.style.top = t + 'px';
                 }
                 
                 function stopMoving() {
@@ -872,13 +879,12 @@ function initWhiteboard() {
 }
 
 // Function to add a new box to the whiteboard
-function addWhiteboardBox(content, x, y) {
+function addWhiteboardBox(x, y) {
     const whiteboardContent = document.querySelector('.whiteboard-content');
     const box = document.createElement('div');
     box.className = 'whiteboard-box';
-    box.innerHTML = content;
-    box.style.left = (x || Math.random() * (whiteboardContent.clientWidth - 200)) + 'px';
-    box.style.top = (y || Math.random() * (whiteboardContent.clientHeight - 200)) + 'px';
+    box.style.left = (x || Math.random() * (whiteboardContent.clientWidth) + 400) + 'px';
+    box.style.top = (y || Math.random() * (whiteboardContent.clientHeight) + 400) + 'px';
     whiteboardContent.appendChild(box);
     return box;
 }

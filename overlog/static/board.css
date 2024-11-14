@@ -219,6 +219,21 @@ div.msg div.header * {
 	background-color: gray;
 }
 
+.stick {
+	margin-left: 4ex;
+	opacity: 0.5;
+}
+
+.line .stick {
+  /* Initially hide the button */
+  display: none;
+}
+
+.line:hover .stick {
+  /* Show the button when the line is hovered */
+  display: inline;
+}
+
 
 .subtitle {
 	font-size: 78%;
