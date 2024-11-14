@@ -42,6 +42,27 @@
     right: 0;
     bottom: 0;
     background: #fff;
+    overflow: auto;
+}
+
+.whiteboard-content {
+    position: relative;
+    width: 5000px;
+    height: 5000px;
+    transform-origin: 0 0;
+}
+
+.whiteboard-box {
+    position: absolute;
+    min-width: 100px;
+    min-height: 100px;
+    background: white;
+    border: 2px solid #007bff;
+    border-radius: 4px;
+    padding: 8px;
+    cursor: move;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 #whiteboard {

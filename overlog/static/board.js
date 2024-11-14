@@ -798,25 +798,32 @@ function initTabs() {
     });
 }
 
-// Basic whiteboard functionality
+// Whiteboard functionality
 function initWhiteboard() {
-    const canvas = document.getElementById('whiteboard');
-    if (!canvas.initialized) {
-        canvas.initialized = true;
-        const ctx = canvas.getContext('2d');
+    const whiteboardContent = document.querySelector('.whiteboard-content');
+    if (!whiteboardContent.initialized) {
+        whiteboardContent.initialized = true;
         
         // Set canvas size
+        const canvas = document.getElementById('whiteboard');
         function resizeCanvas() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
+            canvas.width = whiteboardContent.clientWidth;
+            canvas.height = whiteboardContent.clientHeight;
         }
         resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        
+        // Center the view initially
+        const container = document.querySelector('.whiteboard-container');
+        container.scrollLeft = (whiteboardContent.clientWidth - container.clientWidth) / 2;
+        container.scrollTop = (whiteboardContent.clientHeight - container.clientHeight) / 2;
 
+        // Initialize drawing
         let drawing = false;
         let lastX = 0;
         let lastY = 0;
 
+        const ctx = canvas.getContext('2d');
+        
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing);
@@ -839,7 +846,41 @@ function initWhiteboard() {
         function stopDrawing() {
             drawing = false;
         }
+
+        // Make boxes draggable
+        whiteboardContent.addEventListener('mousedown', function(e) {
+            if (e.target.classList.contains('whiteboard-box')) {
+                const box = e.target;
+                let startX = e.clientX - box.offsetLeft;
+                let startY = e.clientY - box.offsetTop;
+                
+                function moveBox(e) {
+                    box.style.left = (e.clientX - startX) + 'px';
+                    box.style.top = (e.clientY - startY) + 'px';
+                }
+                
+                function stopMoving() {
+                    document.removeEventListener('mousemove', moveBox);
+                    document.removeEventListener('mouseup', stopMoving);
+                }
+                
+                document.addEventListener('mousemove', moveBox);
+                document.addEventListener('mouseup', stopMoving);
+            }
+        });
     }
+}
+
+// Function to add a new box to the whiteboard
+function addWhiteboardBox(content, x, y) {
+    const whiteboardContent = document.querySelector('.whiteboard-content');
+    const box = document.createElement('div');
+    box.className = 'whiteboard-box';
+    box.innerHTML = content;
+    box.style.left = (x || Math.random() * (whiteboardContent.clientWidth - 200)) + 'px';
+    box.style.top = (y || Math.random() * (whiteboardContent.clientHeight - 200)) + 'px';
+    whiteboardContent.appendChild(box);
+    return box;
 }
 
 $(document).ready(function() {
