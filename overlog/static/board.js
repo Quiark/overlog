@@ -796,6 +796,9 @@ function initTabs() {
         } else if (tabId === 'whiteboard') {
             $('#whiteboard-view').addClass('active');
             initWhiteboard();
+            if (latestWhiteboardBox) {
+                latestWhiteboardBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     });
 }
@@ -879,6 +882,8 @@ function initWhiteboard() {
 }
 
 // Function to add a new box to the whiteboard
+let latestWhiteboardBox = null;
+
 function addWhiteboardBox(x, y) {
     const whiteboardContent = document.querySelector('.whiteboard-content');
     const box = document.createElement('div');
@@ -886,6 +891,7 @@ function addWhiteboardBox(x, y) {
     box.style.left = (x || Math.random() * (whiteboardContent.clientWidth) + 400) + 'px';
     box.style.top = (y || Math.random() * (whiteboardContent.clientHeight) + 400) + 'px';
     whiteboardContent.appendChild(box);
+    latestWhiteboardBox = box;
     return box;
 }
 
