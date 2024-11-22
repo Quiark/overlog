@@ -799,6 +799,22 @@ function initTabs() {
             if (latestWhiteboardBox) {
                 latestWhiteboardBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
+        } else if (tabId === 'latest') {
+            $('#main-view').addClass('active');
+            $('.tab-button[data-tab="main"]').addClass('active');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+            
+            // Select the last PID in the filter
+            const $pidFilter = $('.PID_filter');
+            const $lastPid = $('li[data-pid]', $pidFilter).last();
+            if ($lastPid.length) {
+                $('.ui-selected', $pidFilter).removeClass('ui-selected');
+                $lastPid.addClass('ui-selected');
+                // Trigger the filter update
+                const pids = OverlogBoard.control.get_selected_items($pidFilter[0], 'data-pid');
+                OverlogBoard.set_filter('pid', pids);
+                OverlogBoard.control.refresh();
+            }
         }
     });
 }
