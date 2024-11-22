@@ -19,7 +19,7 @@ SocketClient = {
 		ws.onmessage = this.on_message;
 		ws.onclose = function() { 
 			$("#bottom-information-panel").html("Disconnected. Waiting 1 second before reconnecting...");
-			self.reconnectingTimer = setInterval("javascript:SocketClient.Reconnect()", 1000);
+			self.reconnectingTimer = setInterval(() => SocketClient.Reconnect(), 1000);
 		};
 		ws.onopen = function(){ 
 			$("#bottom-information-panel").html("Connected.");
