@@ -142,7 +142,7 @@ def run(port):
 			(r'/', IndexHandler )
 		])
 
-		app.listen(port, '127.0.0.1')
+		app.listen(port, '0.0.0.0')
 		tornado.ioloop.IOLoop.instance().start()
 	except:
 		logging.exception('in main loop')
