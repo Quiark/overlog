@@ -90,7 +90,10 @@ class MessagePasser(object):
 		if msg[0] == '#':
 			self.control_message(msg)
 		elif self.wsock:
-			self.wsock.write_message(msg)
+			try:
+				self.wsock.write_message(msg)
+			except tornado.websocket.WebSocketClosedError:
+				logging.warning("WebSocket closed, message not sent")
 
 		pid = str(pid)
 		if pid in self.rpc_lists:
