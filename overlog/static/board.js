@@ -824,6 +824,36 @@ function initWhiteboard() {
     const whiteboardContent = document.querySelector('.whiteboard-content');
     if (!whiteboardContent.initialized) {
         whiteboardContent.initialized = true;
+
+        // Initialize Clear button
+        document.getElementById('clear-whiteboard').addEventListener('click', function() {
+            const boxes = whiteboardContent.querySelectorAll('.whiteboard-box');
+            boxes.forEach(box => box.remove());
+        });
+
+        // Initialize Diff button
+        document.getElementById('diff-whiteboard').addEventListener('click', function() {
+            const boxes = whiteboardContent.querySelectorAll('.whiteboard-box');
+            if (boxes.length >= 2) {
+                const box1 = boxes[0];
+                const box2 = boxes[1];
+                
+                // Get the data from the boxes
+                const data1 = $(box1).data('msg')?.data;
+                const data2 = $(box2).data('msg')?.data;
+                
+                if (data1 && data2) {
+                    // Create new box with diff
+                    const diffBox = addWhiteboardBox();
+                    const diffData = {
+                        data: recursiveDiff(data1, data2),
+                        stack: [],
+                        time: Date.now() / 1000
+                    };
+                    OverlogBoard.build_message({}, diffData, $(diffBox));
+                }
+            }
+        });
         
         // Set canvas size
         const canvas = document.getElementById('whiteboard');
@@ -909,6 +939,54 @@ function addWhiteboardBox(x, y) {
     whiteboardContent.appendChild(box);
     latestWhiteboardBox = box;
     return box;
+}
+
+function recursiveDiff(obj1, obj2) {
+    if (obj1 === obj2) return null;
+    
+    if (typeof obj1 !== typeof obj2) {
+        return { old: obj1, new: obj2 };
+    }
+    
+    if (typeof obj1 !== 'object' || obj1 === null || obj2 === null) {
+        return { old: obj1, new: obj2 };
+    }
+    
+    if (Array.isArray(obj1) !== Array.isArray(obj2)) {
+        return { old: obj1, new: obj2 };
+    }
+    
+    const diff = {};
+    
+    // Handle arrays
+    if (Array.isArray(obj1)) {
+        const maxLen = Math.max(obj1.length, obj2.length);
+        const arrayDiff = [];
+        for (let i = 0; i < maxLen; i++) {
+            const d = recursiveDiff(obj1[i], obj2[i]);
+            if (d !== null) arrayDiff[i] = d;
+        }
+        return arrayDiff.length > 0 ? arrayDiff : null;
+    }
+    
+    // Handle objects
+    for (const key in obj1) {
+        if (!(key in obj2)) {
+            diff[key] = { old: obj1[key], new: undefined };
+            continue;
+        }
+        
+        const d = recursiveDiff(obj1[key], obj2[key]);
+        if (d !== null) diff[key] = d;
+    }
+    
+    for (const key in obj2) {
+        if (!(key in obj1)) {
+            diff[key] = { old: undefined, new: obj2[key] };
+        }
+    }
+    
+    return Object.keys(diff).length > 0 ? diff : null;
 }
 
 $(document).ready(function() {

@@ -23,6 +23,23 @@
     border-color: #0056b3;
 }
 
+.whiteboard-controls {
+    float: right;
+    margin-right: 10px;
+}
+
+.wb-button {
+    padding: 8px 16px;
+    margin-left: 5px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+}
+
+.wb-button:hover {
+    background: #f0f0f0;
+}
+
 #tab-content {
     margin-top: 50px; /* Space for fixed tab switcher */
 }
