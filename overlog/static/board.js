@@ -171,7 +171,7 @@ Build.prototype.dumpobj = function(indent, obj, $_parent, owner, path) {
 				evt.stopPropagation();
 				var $sub = $(this).data('$sub');
 				var node = $sub.data('node');
-				console.log(node.val)
+
 				var box = $(addWhiteboardBox());
 				OverlogBoard.build_message({}, {
 					stack: [],
@@ -648,7 +648,7 @@ OverlogBoard = {
 			b.span().text('PID: ');
 			b.span('pid').text(msg.pid);
 			b.span().text('THR: ');
-			b.span('thr').text(msg.thread.name);
+			b.span('thr').text(msg.thread?.name);
 			b.span().text('mode: ');
 			b.span('mode').text(msg.mode);
 			b.span().text('time: ');
@@ -839,8 +839,9 @@ function initWhiteboard() {
                 const box2 = boxes[1];
                 
                 // Get the data from the boxes
-                const data1 = $(box1).data('msg')?.data;
-                const data2 = $(box2).data('msg')?.data;
+				const pick = (e) => $(e.children[0]).data('msg')?.data
+                const data1 = pick(box1);
+                const data2 = pick(box2);
                 
                 if (data1 && data2) {
                     // Create new box with diff
@@ -850,6 +851,7 @@ function initWhiteboard() {
                         stack: [],
                         time: Date.now() / 1000
                     };
+
                     OverlogBoard.build_message({}, diffData, $(diffBox));
                 }
             }

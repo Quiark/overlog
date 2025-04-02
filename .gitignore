@@ -5,3 +5,6 @@ attic/
 colors/
 build/
 .aider*
+.env
+env
+Overlog.egg-info
